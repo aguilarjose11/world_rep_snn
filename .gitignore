@@ -1,0 +1,14 @@
+# keep cpp and h files except object ones
+*.o
+!*.cpp
+!*.h
+
+# binaries
+snn_main
+test
+
+# misc
+*.txt
+.vscode
+obj
+
