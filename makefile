@@ -1,5 +1,6 @@
 IDIR=.
 CC=gcc
+CXXFLAGS=-g -std=c++11 -Wall -pedantic
 CFLAGS=-I$(IDIR) -DARMA_DONT_USE_WRAPPER -lopenblas -llapack -larmadillo -lstdc++
 ODIR=.
 LDIR=.

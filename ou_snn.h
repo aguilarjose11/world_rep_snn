@@ -12,7 +12,8 @@
 #include <armadillo>
 #include <vector>
 
-
+#define K_LIST_INPUT_SYNAPSES 0
+#define K_LIST_LATERAL_SYNAPSES 1
 
 /**
  * Delayable Spike
@@ -63,16 +64,21 @@ class OU_LIF_SRM
          * Constructor for custom neuron.
          * 
          * @param snn_id Neuron's id withing a layer
-         * @param init_w Initial weight vector
-         * @param tau_m Membrane time constant
-         * @param tau_s PSP time constant
+         * @param n_inputs  number of input synapses
+         * @param n_lateral number of lateral synapses
+         * @param init_d initial delay vector for input synapses
+         * @param init_w Initial weight vector for lateral synapses
+         * @param tau_m membrane behaviour constant. (spike decay)
          * @param u_rest Resting potential
          * @param init_v Initial threshold
+         * @param t_rest length of refractory period
+         * @param kappa_naugh max height of spike (membrane's)
+         * @param round_zero value at which kappa function is zero.
         */
-        OU_LIF_SRM(unsigned int snn_id, arma::Col<double> init_w,
-         double tau_m, double tau_s, double u_rest, double init_v,
-         double n_inputs, unsigned char t_reset, double kappa_naugh,
-         double min_val);
+        OU_LIF_SRM(unsigned int snn_id, int n_inputs, int n_lateral, 
+        arma::Col<double> init_d, arma::Col<double> init_w, double tau_m, 
+        double u_rest, double init_v, unsigned char t_reset,
+        double kappa_naugh, double round_zero);
 
         /**
           * Membrane potential function ( u(t) )
@@ -178,7 +184,20 @@ class OU_LIF_SRM
                 bool near_zero;
         };
 
-
+        // Constructor variables
+        /**
+         * neuron's own index within a layer.
+        */
+        unsigned int snn_id;
+        unsigned int n_inputs;
+        unsigned int n_lateral;
+        /**
+         * delay vector for input synapses
+         * 
+         * may disapear in future updates since this is really managed 
+         * by the network framework.
+        */
+        arma::Col<double> d_j;
         /**
          * Weight matrix.
          * 
@@ -186,7 +205,25 @@ class OU_LIF_SRM
          * It is indexed as j where it is the input
          * presyaptic neuron's weight. 
         */
-        arma::Col<double> w_j;
+        arma::Col<double> w_m;
+        double tau_m;
+        /**
+         * Resting potential of the neuron.
+        */
+        double u_rest;
+        /**
+         * Spike Threshold
+         * 
+         * Potential level at which the neuron fires.
+        */
+        double v;
+        /**
+         * Time of reset after firing.
+        */
+        unsigned char t_reset;
+        double kappa_naugh;
+        double round_zero;
+
 
         /**
          * Time tracking variable
@@ -194,9 +231,27 @@ class OU_LIF_SRM
         unsigned long long t;
 
         /**
-         * neuron's own index within a layer.
+         * neuron firing flag
         */
-        unsigned int i;
+        bool fired;
+
+
+        /**
+         * Current time in refactory. We reset to -1 as flag that we 
+         * have not fired yet
+        */
+        int t_ref;
+
+        // Neuron Anatomy
+
+        /**
+         * variable-size list that will contain kappa filters
+         * for each synapse with input. each input will be
+         * indexed as their number as input neuron within the
+         * input layer.
+        */
+        
+        std::vector< std::vector<KappaFilter> > k_filter_list;
 
         /**
          * Horizontal Input function
@@ -209,17 +264,6 @@ class OU_LIF_SRM
         */
         std::vector<D_Spike> horizontal_dendrite;
 
-        /**
-         * Axon output
-         * 
-         * The axon in the neuron model represents the
-         * place where outcomming spikes come out of the
-         * neuron. The spike is either a 1 or a 0.
-         * 
-         * if the spike in the axon is a 0, no delay is expected
-         * else, some delay could be there.
-        */
-        D_Spike axon;
 
         /**
          * Dendrite input
@@ -236,48 +280,18 @@ class OU_LIF_SRM
          * applied to them.
         */
         std::vector<D_Spike> dendrite;
-
+        
         /**
-         * Spike Threshold
+         * Axon output
          * 
-         * Potential level at which the neuron fires.
+         * The axon in the neuron model represents the
+         * place where outcomming spikes come out of the
+         * neuron. The spike is either a 1 or a 0.
+         * 
+         * if the spike in the axon is a 0, no delay is expected
+         * else, some delay could be there.
         */
-        double v;
-        double kappa_naugh;
-        double tau_m;
-        double tau_s;
-        double min_val;
-
-        /**
-         * Resting potential of the neuron.
-        */
-        double u_rest;
-
-        /**
-         * neuron firing flag
-        */
-        bool fired;
-
-        /**
-         * Time of reset after firing.
-        */
-        unsigned char t_reset;
-
-        /**
-         * Current time in refactory. We reset to -1 as flag that we 
-         * have not fired yet
-        */
-        int t_ref;
-
-        /**
-         * variable-size list that will contain kappa filters
-         * for each synapse with input. each input will be
-         * indexed as their number as input neuron within the
-         * input layer.
-        */
-        
-        std::vector< std::vector<KappaFilter> > k_filter_list;
-        
+        D_Spike axon;
 };
 
 
@@ -340,7 +354,7 @@ class OU_SRM_NET
 {
     public: 
         OU_SRM_NET(unsigned int n_inputs, unsigned int n_hidden);
-        std::vector<OU_LIF_SRM_INPUT> input_layer
+        std::vector<OU_LIF_SRM_INPUT> input_layer;
         std::vector<OU_LIF_SRM> hidden_layer;
     // TODO.
 };

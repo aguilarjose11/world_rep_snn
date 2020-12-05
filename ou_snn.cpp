@@ -1,5 +1,18 @@
 #include <math.h>
+#include <exception>
 #include "ou_snn.h"
+
+#define ACTION_POTENTIAL (SHRT_MAX) - 1
+#define DEBUG true
+
+// Exceptions
+class neuronexception: public std::exception
+{
+  virtual const char* what() const throw()
+  {
+    return "Invalid neuron initial values";
+  }
+} neuronex;
 
 
 D_Spike::D_Spike(unsigned int delay, bool signal)
@@ -23,7 +36,8 @@ double min_val, int delay)
     this->min_val = min_val;
     this->k = kappa_nought;
     this->near_zero = false;
-    this->t = delay;
+    this->t = -delay - 1;
+    this->t_pulse();
 }
 
 bool OU_LIF_SRM::KappaFilter::is_zero()
@@ -33,7 +47,7 @@ bool OU_LIF_SRM::KappaFilter::is_zero()
 
 double OU_LIF_SRM::KappaFilter::kappa(unsigned int s)
 {
-    return kappa_nought * exp( -s / this->tau_m);
+    return kappa_nought * (1/exp( s / this->tau_m));
 }
 
 void OU_LIF_SRM::KappaFilter::t_pulse()
@@ -46,70 +60,143 @@ void OU_LIF_SRM::KappaFilter::t_pulse()
         // update the kappa value
         this->k = this->kappa(this->t);
         // update wether k is low enough to be zero
-        if(this->k < this->min_val)
+        if(fabs(this->k) < this->min_val)
         {
             this->near_zero = true;
         }
     }
+    else
+    {
+        this->k = 0;
+    }
+    
 }
 /* End of OU_LIF_SRM::KappaFilter */
 
 
 /* OU_LIF_SRM */
 
+OU_LIF_SRM::OU_LIF_SRM(unsigned int snn_id, int n_inputs, int n_lateral, 
+        arma::Col<double> init_d, arma::Col<double> init_w, double tau_m, 
+        double u_rest, double init_v, unsigned char t_reset,
+        double kappa_naugh, double round_zero)
+{   
+    // run checks
+    if(n_inputs != (int)init_d.size())
+    {
+        // invalid initial delays
+        fprintf(stderr, "invalid initial delays {%d} - {%d}\n", n_inputs, (int)init_d.size());
+        throw neuronex;
+    }
+    if(n_lateral != (int)init_w.size())
+    {
+        // invalid initial weights
+        fprintf(stderr, "invalid initial weights\n");
+        throw neuronex;
+    }
+    if(tau_m <= 0)
+    {
+        // invalid tau_m
+        fprintf(stderr, "invalid tau_m\n");
+        throw neuronex;
+    }
+    if(init_v <= 0)
+    {
+        // invalid initial threshold
+        fprintf(stderr, "invalid initial threshold\n");
+        throw neuronex;
+    }
+    if(t_reset > 200)
+    {
+        // warn for possible data loop around
+        fprintf(stderr, "Warning: possible data loop around\n");
+    }
+    if(kappa_naugh <= 0)
+    {
+        // invalid kappa_naugh
+        fprintf(stderr, "invalid k_0\n");
+        throw neuronex;
+    }
+    if(round_zero <= 0)
+    {
+        // invalid round to zero threshold
+        fprintf(stderr, "invalid round to zero threshold\n");
+        throw neuronex;
+    }
+    
 
+    this->snn_id = snn_id;
+    this->n_inputs = n_inputs;
+    this->n_lateral = n_lateral;
+    this->d_j = init_d;
+    this->w_m = init_w;
+    this->tau_m = tau_m;
+    this->u_rest = u_rest;
+    this->v = init_v;
+    this->t_reset = t_reset;
+    this->kappa_naugh = kappa_naugh;
+    this->round_zero = round_zero;
 
+    // construct neuron's particulars
+    this->t = 0;
+    this->fired = false;
+    this->t_ref = -1;
+    // fill in with empty k lists
+    // we have input and lateral kappas
+    this->k_filter_list.resize(2);
+
+    // initialize the endrites and axons.
+    this->horizontal_dendrite.resize(n_lateral);
+    this->dendrite.resize(n_inputs);
+    this->axon = D_Spike();
+}
 
 double OU_LIF_SRM::membrane_potential()
 {
+
+    // we can find the membrane potential at current time by gettinh
+    // the already-calculated kappa value from the kappa filters.
+
+    // REMEMBER: by the time this neuron recieves a spike from an input
+    // synapse, the delay was already applied beforehand. The neuron does
+    // not keep track of the time left for the spike to happen. 
+    // once it arrives, IT ARRIVES.
+
     // Sum of all membrane potentials from input layer at time t
     double k_sigma = 0;
-    for(int i = 0; i < this->k_filter_list.size(); i++)
-    {
-        for(int k_i = 0; k_i < this->k_filter_list.at(i).size(); k_i++)
-        {
-            k_sigma += this->k_filter_list.at(i).at(k_i).k;
-        }
-    }
-    // the sum of all kappas is the current membrane potential
-    
-    return k_sigma + this->u_rest;
-}
 
-OU_LIF_SRM::OU_LIF_SRM(unsigned int snn_id, arma::Col<double> init_w, 
-double tau_m, double tau_s, double u_rest, double init_v, double n_inputs, 
-unsigned char t_reset, double kappa_naugh, double min_val)
-{   
-    this->w_j = init_w;
-    this->i = snn_id;
-    this->tau_m = tau_m;
-    this->tau_s = tau_s;
-    this->u_rest = u_rest;
-    this->v = init_v;
-    this->t = 0;
-    this->kappa_naugh = kappa_naugh;
-    this->min_val = min_val;
-    // fill in with empty k lists
-    std::vector<KappaFilter> tmp;
-    for(int input = 0; input < n_inputs; input++)
+    // membrane potentials of input synapses
+    for(unsigned int k_i = 0; k_i < this->k_filter_list.at(K_LIST_INPUT_SYNAPSES).size(); k_i++)
     {
-        this->k_filter_list.push_back(tmp);
+        k_sigma += this->k_filter_list.at(K_LIST_INPUT_SYNAPSES).at(k_i).k;
     }
-    this->t_reset = t_reset;
-    this->t_ref = -1;
-    this->fired = false;
+
+    // membrane potentials of lateral synapses
+    for(unsigned int k_m = 0; k_m < this->k_filter_list.at(K_LIST_LATERAL_SYNAPSES).size(); k_m++)
+    {
+        k_sigma += this->k_filter_list.at(K_LIST_LATERAL_SYNAPSES).at(k_m).k;
+    }
+    
+
+    // the sum of all kappas plus u_rest is the membrane potential.
+    return k_sigma + this->u_rest;
 }
 
 void OU_LIF_SRM::t_pulse()
 {
+    if(DEBUG)
+        printf("\n\nPulse at time: %u\n", (unsigned int)this->t);
     // march forward
     (this->t)++;
     // count to see if we reach the end of refactory period
     (this->t_ref)++;
+    // have we ended refractory period?
     if(this->fired && this->t_ref == this->t_reset)
     {
-        // ended refactory period
+        // ended refactory period!
+        // not refactory period
         this->fired = false;
+        // reset the value of t_ref back to -1
         this->t_ref = -1;
     }
     else if(this->fired)
@@ -128,56 +215,88 @@ void OU_LIF_SRM::t_pulse()
         */
         // Refactory period
         // create no spike
-        D_Spike out_spike(0, 0);
-        this->axon = out_spike;
+        this->axon = D_Spike();
         // we go back
         // at this point all of the kappas that existed were removed.
+        return;
 
     }
+    // no refractory period.
+
     // t_pulse all filters forward
     // also remove invalid near zero kappas
-    for(int input = 0; i < k_filter_list.size(); i++)
+    for(unsigned int input = 0; input < k_filter_list.size(); input++)
     {
-        for(int j = 0; j < k_filter_list.at(input).size(); j++)
+        for(unsigned int j = 0; j < k_filter_list.at(input).size(); j++)
         {
             k_filter_list.at(input).at(j).t_pulse();
             if(k_filter_list.at(input).at(j).is_zero())
             {
                 // we remove this (jth) kappa. it is basically depleted
                 k_filter_list.at(input).erase(k_filter_list.at(input).begin()+j);
+                j--;
             }
         }
     }
+
     // check the inputs from input layer to create kappas
-    for (int input = 0; input < this->dendrite.size(); input++)
+    for (unsigned int input = 0; input < this->n_inputs; input++)
     {
-        if(this->i == input)
-        {
-            continue;
-        }
         if(this->dendrite.at(input).signal)
         {
-            if(this->fired && this->dendrite.at(input).d < (this->t_reset - this->t_ref))
+            // this is an active spike
+            if(!this->fired)
             {
-                // we are in refactory period but this spike will arrive after it.
-                KappaFilter new_spike(this->tau_m, this->kappa_naugh, this->min_val, dendrite.at(input).d);
-                this->k_filter_list.at(input).push_back(new_spike);
+                // Spike arrived. add new kappa.
+                if(DEBUG)
+                    printf("Spike Recieved.\n");
+                KappaFilter new_spike(this->tau_m, this->kappa_naugh, this->round_zero, 0);
+                this->k_filter_list.at(K_LIST_INPUT_SYNAPSES).push_back(new_spike);
             }
-            else if(!this->fired)
-            {
-                // Spike arrived w/ delay. add new kappa.
-                KappaFilter new_spike(this->tau_m, this->kappa_naugh, this->min_val, dendrite.at(input).d);
-                this->k_filter_list.at(input).push_back(new_spike);
-            }
-            // if neuron is in refactory, ignore any spike with low delay
+            // if neuron is in refactory, ignore any spike. DELAYS ALREADY
+            // APPLIED!
         }
     }
-    // check for horizontal inputs?
+    // check for horizontal inputs
+    for(unsigned int lateral = 0; lateral < this->n_lateral; lateral++)
+    {
+        // for every lateral synapse
+        if(this->snn_id == lateral)
+        {
+            // no self-feedback
+            continue;
+        }
+        if(this->horizontal_dendrite.at(lateral).signal)
+        {
+            if(!this->fired)
+            {
+                // lateral spike arrived, apply the weight!
+                double weighted_k = this->kappa_naugh * this->w_m.at(lateral);
+                KappaFilter new_spike(this->tau_m, weighted_k, this->round_zero, 0);
+                this->k_filter_list.at(K_LIST_LATERAL_SYNAPSES).push_back(new_spike);
+            }
+        }
+    }
 
     // solve the neuron
     if(!this->fired)
     {
         this->solve();
+    }
+    if(DEBUG)
+    {
+        printf("input kappas: [");
+        for(unsigned int x = 0; x < this->k_filter_list.at(K_LIST_INPUT_SYNAPSES).size(); x++)
+        {
+            printf(" %f ", this->k_filter_list.at(K_LIST_INPUT_SYNAPSES).at(x).k);
+        }
+        printf(" ]\n");
+        printf("lateral kappas: [");
+        for(unsigned int x = 0; x < this->k_filter_list.at(K_LIST_LATERAL_SYNAPSES).size(); x++)
+        {
+            printf(" %f ", this->k_filter_list.at(K_LIST_LATERAL_SYNAPSES).at(x).k);
+        }
+        printf(" ]\n");
     }
 
     // anything else?
@@ -195,10 +314,8 @@ void OU_LIF_SRM::solve()
             this->fired = true;
             this->t_ref = 0;
             // we remove all active kappas!
-            for(int i = 0; i < this->k_filter_list.size(); i++)
-            {
-                this->k_filter_list.at(i).clear();
-            }
+            this->k_filter_list.at(K_LIST_INPUT_SYNAPSES).clear();
+            this->k_filter_list.at(K_LIST_LATERAL_SYNAPSES).clear();
             // we fire the neuron
             D_Spike fire_spike(0, 1);
             this->axon = fire_spike;
