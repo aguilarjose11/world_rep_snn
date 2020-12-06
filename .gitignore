@@ -11,4 +11,4 @@ test
 *.txt
 .vscode
 obj
-
+workspace.code-workspace
