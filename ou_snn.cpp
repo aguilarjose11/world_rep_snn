@@ -400,18 +400,18 @@ void OU_FSTN::t_pulse()
 
 
 OU_SRM_NET::OU_SRM_NET(unsigned int i_layer_size, unsigned int h_layer_size, 
-        arma::Col<double> d_init, arma::Col<double> w_init, double tau_m,
+        std::vector<arma::Col<double>> d_init, std::vector<arma::Col<double>> w_init, double tau_m,
         double u_rest, double init_v, double t_reset, double k_nought,
         double round_zero, double alpha)
 {
     // run checks
-    if(i_layer_size != d_init.size())
+    if(i_layer_size != d_init.size() || i_layer_size != d_init.at(0).size())
     {
         // invalid initial delays
         fprintf(stderr, "invalid initial delays {%u} - {%u}\n", i_layer_size, (unsigned int)d_init.size());
         throw neuronex;
     }
-    if(h_layer_size != w_init.size())
+    if(h_layer_size != w_init.size() || h_layer_size != w_init.at(0).size())
     {
         // invalid initial weights
         fprintf(stderr, "invalid initial weights\n");
@@ -451,7 +451,7 @@ OU_SRM_NET::OU_SRM_NET(unsigned int i_layer_size, unsigned int h_layer_size,
     this->t = 0;
     this->i_size = i_layer_size;
     this->h_size = h_layer_size;
-    this->d_ji.resize(i_layer_size);
+    this->d_ji = d_init;
     
     // Populate layers with neurons
     for(unsigned int i = 0; i < i_layer_size; i++)
@@ -462,8 +462,9 @@ OU_SRM_NET::OU_SRM_NET(unsigned int i_layer_size, unsigned int h_layer_size,
     for(unsigned int h = 0; h < h_layer_size; h++)
     {
         // create hidden layer
+        // d_init.at(0) is bologna. its is virtually useless!
         this->hidden_layer.push_back(OU_LIF_SRM(h, i_layer_size, 
-        h_layer_size, d_init, w_init, tau_m, u_rest, init_v, t_reset,
+        h_layer_size, d_init.at(0), w_init.at(h), tau_m, u_rest, init_v, t_reset,
         k_nought, round_zero));
     }
     
@@ -512,7 +513,7 @@ void OU_SRM_NET::process(std::vector<double> data)
             for(unsigned int i = 0; i < h_size; i++)
             {
                 // we add +1 to delay to account for current time
-                this->net_queue_i.at(j).at(i).push_back(D_Spike(this->d_ji.at(i) + 1, true));
+                this->net_queue_i.at(j).at(i).push_back(D_Spike(this->d_ji.at(j).at(i) + 1, true));
             }
         }
     }
