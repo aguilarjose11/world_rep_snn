@@ -408,7 +408,7 @@ OU_SRM_NET::OU_SRM_NET(unsigned int i_layer_size, unsigned int h_layer_size,
     if(i_layer_size != d_init.size())
     {
         // invalid initial delays
-        fprintf(stderr, "invalid initial delays {%u} - {%u}\n", i_layer_size, d_init.size());
+        fprintf(stderr, "invalid initial delays {%u} - {%u}\n", i_layer_size, (unsigned int)d_init.size());
         throw neuronex;
     }
     if(h_layer_size != w_init.size())
@@ -454,12 +454,12 @@ OU_SRM_NET::OU_SRM_NET(unsigned int i_layer_size, unsigned int h_layer_size,
     this->d_ji.resize(i_layer_size);
     
     // Populate layers with neurons
-    for(int i = 0; i < i_layer_size; i++)
+    for(unsigned int i = 0; i < i_layer_size; i++)
     {
         // create FSTN layer (input)
         this->input_layer.push_back(OU_FSTN(i, alpha));
     }
-    for(int h = 0; h < h_layer_size; h++)
+    for(unsigned int h = 0; h < h_layer_size; h++)
     {
         // create hidden layer
         this->hidden_layer.push_back(OU_LIF_SRM(h, i_layer_size, 
@@ -469,7 +469,7 @@ OU_SRM_NET::OU_SRM_NET(unsigned int i_layer_size, unsigned int h_layer_size,
     
     // initialize network of spikes between input and hidden layers.
     net_queue_i.reserve(i_layer_size);
-    for(int i = 0; i < i_layer_size; i++)
+    for(unsigned int i = 0; i < i_layer_size; i++)
     {
         // for every input network connections
         // reserve a queue for every processing neuron
@@ -477,12 +477,12 @@ OU_SRM_NET::OU_SRM_NET(unsigned int i_layer_size, unsigned int h_layer_size,
     }
 
     // initialize network of spikes between neurons in hidden layer
-    net_queue_m.reserve(h_layer_size);
+    net_queue_m.resize(h_layer_size);
 }
 
 void OU_SRM_NET::process(std::vector<double> data)
 {
-    // make sure we have enough data
+    // make sure we have enough data to input.
     if(data.size() != input_layer.size())
     {
         // no enough data
@@ -490,10 +490,17 @@ void OU_SRM_NET::process(std::vector<double> data)
         throw ilex;
 
     }
+    // March time forward
     (this->t)++;
 
-    // insert data into dendrides of input cells, pulse, and move into net
-    for(int j = 0; j < i_size; j++)
+    /**
+     * - Put data into dendrites of coding neurons.
+     * - Pulse the neuron to do processing.
+     * - Grab the axon output, delay, and add to the
+     *   individual queue of each processing neuron 
+     *   in hidden layer
+    */
+    for(unsigned int j = 0; j < i_size; j++)
     {
         input_layer.at(j).dendrite = data.at(j);
         input_layer.at(j).t_pulse();
@@ -502,7 +509,7 @@ void OU_SRM_NET::process(std::vector<double> data)
         if(input_layer.at(j).axon.signal)
         {
             // add delay and add to every hidden neuron
-            for(int i = 0; i < h_size; i++)
+            for(unsigned int i = 0; i < h_size; i++)
             {
                 // we add +1 to delay to account for current time
                 this->net_queue_i.at(j).at(i).push_back(D_Spike(this->d_ji.at(i) + 1, true));
@@ -510,49 +517,90 @@ void OU_SRM_NET::process(std::vector<double> data)
         }
     }
 
-    // Advance time in the network
-    for(int j = 0; j < i_size; j++)
+    /**
+     * Advance time in network connecting the input layer and the hidden
+     * layers.
+     * 
+     * - Reduce the left delay time for each neuron's queue
+     * - Send the active or innactive spikes to the corresponding hidden
+     *   layer's neuron's dendrites.
+    */
+    for(unsigned int j = 0; j < i_size; j++)
     {
-        for(int i = 0; i < h_size; i++)
+        for(unsigned int i = 0; i < h_size; i++)
         {
-            for(int spike = 0; spike < net_queue_i.at(j).at(i).size(); spike++)
+            // is the queue empty? No spikes?
+            if(net_queue_i.at(j).at(i).size() == 0)
             {
-                // send spikes to dendrites of hidden layer
-                if(--net_queue_i.at(j).at(i).at(spike).d <= 0)
+                // send inactive spikes
+                this->hidden_layer.at(i).dendrite.at(j) = D_Spike();
+            }
+            else
+            {
+                // We have spikes to process!
+                for(unsigned int spike = 0; spike < net_queue_i.at(j).at(i).size(); spike++)
                 {
-                    // Spike's delay is over
-                    this->hidden_layer.at(i).dendrite.at(j) = net_queue_i.at(j).at(i).at(spike);
-                }
-                else
-                {
-                    // spike's delay not over
-                    this->hidden_layer.at(i).dendrite.at(j) = D_Spike();
+                    // Note: It is biologically impossible for two spikes in the same synapse
+                    // to be delivered at the same time. It is possible for the spikes
+                    // from two or more input neurons to arrive at the same time, but
+                    // this is accounted for by the design of the dendrites as a vector
+                    // of spikes. The neurons create kappas for each spike!
+
+                    // send spikes to dendrites of hidden layer
+                    if(--net_queue_i.at(j).at(i).at(spike).d <= 0)
+                    {
+                        // Spike's delay is over
+                        this->hidden_layer.at(i).dendrite.at(j) = net_queue_i.at(j).at(i).at(spike);
+
+                        // remove this spike. Has been delivered, not needed anymore.
+                        this->net_queue_i.erase(this->net_queue_i.begin() + spike);
+
+                        // account for the shift in vector after deletion.
+                        spike--;
+                    }
+                    else
+                    {
+                        // spike's delay not over
+                        this->hidden_layer.at(i).dendrite.at(j) = D_Spike();
+                    }
                 }
             }
-            // advance time in hidden layer
-            this->hidden_layer.at(i).t_pulse();
-
-            /**
-             * Note for myself:
-             * We can add the result of feedback back into the neuron
-             * by recalculating the membrane potential
-             * 
-             * At the same time, it could be a bit more accurate keeping
-             * a delay of exactly 1 t?
-            */
-
-            // catch the hiden layer's axon and put it in feedback network
-            this->net_queue_m.at(i) = this->hidden_layer.at(i).axon;
-
-            /**
-             * The neural membrane will be affected until the next epoch?
-             * Is it a way to have the feedback affect the neural membrane
-             * in this epoch? like a limit? or something?!
-            */
         }
     }
-    
-    
 
+    /**
+     * Advance time in lateral feedback network in hidden layer
+     * 
+     * Note for myself:
+     * We can add the result of feedback back into the neuron
+     * by recalculating the membrane potential
+     * 
+     * At the same time, it could be a bit more accurate keeping
+     * a delay of exactly 1 t?
+    */
 
+    // Create queue network for next epoch.
+    std::vector<D_Spike> tmp_queue_m;
+    tmp_queue_m.reserve(this->h_size);
+
+    for(unsigned int i = 0; i < this->hidden_layer.size(); i++)
+    {
+        // plug in the  lateral spikes into neuron
+        this->hidden_layer.at(i).horizontal_dendrite = this->net_queue_m;
+
+        // advance time in hidden layer/process
+        this->hidden_layer.at(i).t_pulse();
+
+        // catch the hiden layer's axon and put it in feedback network
+        tmp_queue_m.at(i) = this->hidden_layer.at(i).axon;
+    }
+
+    // Update the spike train for lateral synapses.
+    this->net_queue_m = tmp_queue_m;
+
+    /**
+     * The neural membrane will be affected until the next epoch?
+     * Is it a way to have the feedback affect the neural membrane
+     * in this epoch? like a limit? or something?!
+    */
 }
