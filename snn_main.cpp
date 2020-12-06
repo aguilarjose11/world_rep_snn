@@ -97,5 +97,53 @@ int main(int argc, const char **argv) {
     for(unsigned int v = 1; v < u.size(); v++)
         printf(", %f", u.at(v));
     printf("]\n");
+
+    // Testing FSTN
+    printf("Testing Fisrt spike time neuron");
+    double alpha = 1;
+    OU_FSTN fstn(0, alpha);
+    fstn.dendrite = (double)2;
+    fstn.t_pulse();
+    fstn.dendrite = (double)2;
+    fstn.t_pulse();
+    fstn.dendrite = (double)2;
+    fstn.t_pulse();
+    fstn.dendrite = (double)2;
+    fstn.t_pulse();
+    fstn.dendrite = (double)2;
+    fstn.t_pulse();
+    fstn.dendrite = (double)2;
+    fstn.t_pulse();
+    fstn.dendrite = (double)2;
+    fstn.t_pulse();
+    fstn.dendrite = (double)2;
+    fstn.t_pulse();
+    fstn.dendrite = (double)5;
+    fstn.t_pulse();
+    fstn.dendrite = (double)5;
+    fstn.t_pulse();
+    fstn.dendrite = (double)5;
+    fstn.t_pulse();
+    fstn.dendrite = (double)5;
+    fstn.t_pulse();
+    fstn.dendrite = (double)5;
+    fstn.t_pulse();
+    fstn.dendrite = (double)5;
+    fstn.t_pulse();
+    fstn.dendrite = (double)5;
+    fstn.t_pulse();
+    fstn.dendrite = (double)5;
+    fstn.t_pulse();
+    fstn.dendrite = (double)5;
+    fstn.t_pulse();
+    fstn.dendrite = (double)5;
+    fstn.t_pulse();
+    fstn.dendrite = (double)5;
+    fstn.t_pulse();
+    fstn.dendrite = (double)5;
+    fstn.t_pulse();
+
+
+
     return 0;
 }

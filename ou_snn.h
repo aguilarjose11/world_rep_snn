@@ -294,32 +294,35 @@ class OU_LIF_SRM
         D_Spike axon;
 };
 
-
-class OU_LIF_SRM_INPUT
+/**
+ * First-spike-time encoding neuron.
+*/
+class OU_FSTN
 {
     public:
-        OU_LIF_SRM_INPUT(double encoding_factor);
+        /**
+         * Fist Spike Time Encoding Neuron
+         * 
+         * @param snn_id neuron's id within layer
+         * @param alpha scaling factor
+        */
+        OU_FSTN(unsigned int snn_id, double alpha);
+
         /**
          * 
         */
         void t_pulse();
 
-        /**
-         * Encoding function
-         * 
-         * Uses first-spike-time encoding
-        */
-        double encode(double x);
+        unsigned int snn_id;
+
+        double alpha;
+
+        unsigned long long t;
 
         /**
          * encoded rate.
         */
-        unsigned int spike_rate;
-
-        /**
-         * factor used for encoding
-        */
-        double encoding_factor;
+        unsigned int spike_delay;
 
         /**
          * input value
@@ -353,8 +356,41 @@ class OU_SNN_NET
 class OU_SRM_NET
 {
     public: 
-        OU_SRM_NET(unsigned int n_inputs, unsigned int n_hidden);
-        std::vector<OU_LIF_SRM_INPUT> input_layer;
+        /***/
+        OU_SRM_NET(unsigned int i_layer_size, unsigned int h_layer_size, 
+        arma::Col<double> d_init, arma::Col<double> w_init, double tau_m,
+        double u_rest, double init_v, double t_reset, double k_nought,
+        double round_zero, double alpha);
+
+        /***/
+        void process(std::vector<double> data);
+
+        // variables
+        unsigned long long t;
+        unsigned int i_size;
+        unsigned int h_size;
+        /**
+         * Delay vector for the ith processing neuron in hidden layer
+        */
+        arma::Col<double> d_ji;
+        std::vector<OU_FSTN> input_layer;
         std::vector<OU_LIF_SRM> hidden_layer;
+
+        /**
+         * Input to Processing layer queue
+         * 
+         * These spikes are delayed by some value and depends
+         * on the 
+         * index order: 
+         * [input neuron, processing neuron, place in neuron queue]
+         * 
+         * The number of spikes in neuron queue can vary.
+        */
+        std::vector<std::vector<std::vector<D_Spike>>> net_queue_i;
+
+        /**
+         * Lateral synapse network queue.
+        */
+        std::vector<D_Spike> net_queue_m;
     // TODO.
 };

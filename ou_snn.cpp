@@ -14,6 +14,14 @@ class neuronexception: public std::exception
   }
 } neuronex;
 
+class InputLayerException: public std::exception
+{
+  virtual const char* what() const throw()
+  {
+    return "Invalid inputs for input layer";
+  }
+} ilex;
+
 
 D_Spike::D_Spike(unsigned int delay, bool signal)
 {
@@ -338,3 +346,213 @@ bool OU_LIF_SRM::fire_condition(double u)
 /* end of OU_LIF_SRM */
 
 
+/* OU_FSTN */
+
+OU_FSTN::OU_FSTN(unsigned int snn_id, double alpha)
+{
+    // run checks
+    if(alpha < 0)
+    {
+        // invalid alpha
+        fprintf(stderr, "Invalid alpha value.\n");
+        throw neuronex;
+    }
+
+    // construct neuron
+    this->snn_id = snn_id;
+    this->alpha = alpha;
+    this->t = 0;
+    this->spike_delay = 0;
+    this->dendrite = 0;
+    this->axon = D_Spike();
+}
+
+void OU_FSTN::t_pulse()
+{
+    // march forward.
+    (this->t)++;
+    // update the time delay
+    this->spike_delay = (unsigned int) abs(this->alpha * this->dendrite);
+    // check requirements to send action potential
+    if(this->t % this->spike_delay == 0)
+    {
+        // Action potential
+        /**
+         * Note: The action potential has a delay time of zero because as
+         * it leaves the cell, the distance between the neuron and the
+         * processing layer's targets neurons can be significantly 
+         * different. A delay is applied to the spike once it enters the 
+         * network space.
+        */
+        this->axon = D_Spike(0, true);
+        if(DEBUG)
+            printf("Spike sent\n");
+    }
+    else
+    {
+        // No action potential
+        if(DEBUG)
+            printf("No spike\n");
+        this->axon = D_Spike();
+    }
+    
+}
+
+
+OU_SRM_NET::OU_SRM_NET(unsigned int i_layer_size, unsigned int h_layer_size, 
+        arma::Col<double> d_init, arma::Col<double> w_init, double tau_m,
+        double u_rest, double init_v, double t_reset, double k_nought,
+        double round_zero, double alpha)
+{
+    // run checks
+    if(i_layer_size != d_init.size())
+    {
+        // invalid initial delays
+        fprintf(stderr, "invalid initial delays {%u} - {%u}\n", i_layer_size, d_init.size());
+        throw neuronex;
+    }
+    if(h_layer_size != w_init.size())
+    {
+        // invalid initial weights
+        fprintf(stderr, "invalid initial weights\n");
+        throw neuronex;
+    }
+    if(tau_m <= 0)
+    {
+        // invalid tau_m
+        fprintf(stderr, "invalid tau_m\n");
+        throw neuronex;
+    }
+    if(init_v <= 0)
+    {
+        // invalid initial threshold
+        fprintf(stderr, "invalid initial threshold\n");
+        throw neuronex;
+    }
+    if(t_reset > 200)
+    {
+        // warn for possible data loop around
+        fprintf(stderr, "Warning: possible data loop around\n");
+    }
+    if(k_nought <= 0)
+    {
+        // invalid kappa_naugh
+        fprintf(stderr, "invalid k_0\n");
+        throw neuronex;
+    }
+    if(round_zero <= 0)
+    {
+        // invalid round to zero threshold
+        fprintf(stderr, "invalid round to zero threshold\n");
+        throw neuronex;
+    }
+    
+    // initialize variable
+    this->t = 0;
+    this->i_size = i_layer_size;
+    this->h_size = h_layer_size;
+    this->d_ji.resize(i_layer_size);
+    
+    // Populate layers with neurons
+    for(int i = 0; i < i_layer_size; i++)
+    {
+        // create FSTN layer (input)
+        this->input_layer.push_back(OU_FSTN(i, alpha));
+    }
+    for(int h = 0; h < h_layer_size; h++)
+    {
+        // create hidden layer
+        this->hidden_layer.push_back(OU_LIF_SRM(h, i_layer_size, 
+        h_layer_size, d_init, w_init, tau_m, u_rest, init_v, t_reset,
+        k_nought, round_zero));
+    }
+    
+    // initialize network of spikes between input and hidden layers.
+    net_queue_i.reserve(i_layer_size);
+    for(int i = 0; i < i_layer_size; i++)
+    {
+        // for every input network connections
+        // reserve a queue for every processing neuron
+        net_queue_i.at(i).reserve(h_layer_size);
+    }
+
+    // initialize network of spikes between neurons in hidden layer
+    net_queue_m.reserve(h_layer_size);
+}
+
+void OU_SRM_NET::process(std::vector<double> data)
+{
+    // make sure we have enough data
+    if(data.size() != input_layer.size())
+    {
+        // no enough data
+        fprintf(stderr, "No enough data passed\n");
+        throw ilex;
+
+    }
+    (this->t)++;
+
+    // insert data into dendrides of input cells, pulse, and move into net
+    for(int j = 0; j < i_size; j++)
+    {
+        input_layer.at(j).dendrite = data.at(j);
+        input_layer.at(j).t_pulse();
+        // if spikes are outputed, add delay to spike and place in queue
+        // for each processing neuron in hiden layer
+        if(input_layer.at(j).axon.signal)
+        {
+            // add delay and add to every hidden neuron
+            for(int i = 0; i < h_size; i++)
+            {
+                // we add +1 to delay to account for current time
+                this->net_queue_i.at(j).at(i).push_back(D_Spike(this->d_ji.at(i) + 1, true));
+            }
+        }
+    }
+
+    // Advance time in the network
+    for(int j = 0; j < i_size; j++)
+    {
+        for(int i = 0; i < h_size; i++)
+        {
+            for(int spike = 0; spike < net_queue_i.at(j).at(i).size(); spike++)
+            {
+                // send spikes to dendrites of hidden layer
+                if(--net_queue_i.at(j).at(i).at(spike).d <= 0)
+                {
+                    // Spike's delay is over
+                    this->hidden_layer.at(i).dendrite.at(j) = net_queue_i.at(j).at(i).at(spike);
+                }
+                else
+                {
+                    // spike's delay not over
+                    this->hidden_layer.at(i).dendrite.at(j) = D_Spike();
+                }
+            }
+            // advance time in hidden layer
+            this->hidden_layer.at(i).t_pulse();
+
+            /**
+             * Note for myself:
+             * We can add the result of feedback back into the neuron
+             * by recalculating the membrane potential
+             * 
+             * At the same time, it could be a bit more accurate keeping
+             * a delay of exactly 1 t?
+            */
+
+            // catch the hiden layer's axon and put it in feedback network
+            this->net_queue_m.at(i) = this->hidden_layer.at(i).axon;
+
+            /**
+             * The neural membrane will be affected until the next epoch?
+             * Is it a way to have the feedback affect the neural membrane
+             * in this epoch? like a limit? or something?!
+            */
+        }
+    }
+    
+    
+
+
+}
