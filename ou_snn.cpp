@@ -231,22 +231,6 @@ void OU_LIF_SRM::t_pulse()
     }
     // no refractory period.
 
-    // t_pulse all filters forward
-    // also remove invalid near zero kappas
-    for(unsigned int input = 0; input < k_filter_list.size(); input++)
-    {
-        for(unsigned int j = 0; j < k_filter_list.at(input).size(); j++)
-        {
-            k_filter_list.at(input).at(j).t_pulse();
-            if(k_filter_list.at(input).at(j).is_zero())
-            {
-                // we remove this (jth) kappa. it is basically depleted
-                k_filter_list.at(input).erase(k_filter_list.at(input).begin()+j);
-                j--;
-            }
-        }
-    }
-
     // check the inputs from input layer to create kappas
     for (unsigned int input = 0; input < this->n_inputs; input++)
     {
@@ -257,7 +241,7 @@ void OU_LIF_SRM::t_pulse()
             {
                 // Spike arrived. add new kappa.
                 if(DEBUG)
-                    printf("Spike Recieved.\n");
+                    printf("Spike Recieved. Adding kappa.\n");
                 KappaFilter new_spike(this->tau_m, this->kappa_naugh, this->round_zero, 0);
                 this->k_filter_list.at(K_LIST_INPUT_SYNAPSES).push_back(new_spike);
             }
@@ -265,6 +249,7 @@ void OU_LIF_SRM::t_pulse()
             // APPLIED!
         }
     }
+
     // check for horizontal inputs
     for(unsigned int lateral = 0; lateral < this->n_lateral; lateral++)
     {
@@ -282,6 +267,22 @@ void OU_LIF_SRM::t_pulse()
                 double weighted_k = this->kappa_naugh * this->w_m.at(lateral);
                 KappaFilter new_spike(this->tau_m, weighted_k, this->round_zero, 0);
                 this->k_filter_list.at(K_LIST_LATERAL_SYNAPSES).push_back(new_spike);
+            }
+        }
+    }
+
+    // t_pulse all filters forward
+    // also remove invalid near zero kappas
+    for(unsigned int input = 0; input < k_filter_list.size(); input++)
+    {
+        for(unsigned int j = 0; j < k_filter_list.at(input).size(); j++)
+        {
+            k_filter_list.at(input).at(j).t_pulse();
+            if(k_filter_list.at(input).at(j).is_zero())
+            {
+                // we remove this (jth) kappa. it is basically depleted
+                k_filter_list.at(input).erase(k_filter_list.at(input).begin()+j);
+                j--;
             }
         }
     }
@@ -372,9 +373,11 @@ void OU_FSTN::t_pulse()
     // march forward.
     (this->t)++;
     // update the time delay
+    if(DEBUG)
+        printf("Delay to be calculated\n");
     this->spike_delay = (unsigned int) abs(this->alpha * this->dendrite);
     // check requirements to send action potential
-    if(this->t % this->spike_delay == 0)
+    if((this->spike_delay == 0) || this->t % this->spike_delay == 0)
     {
         // Action potential
         /**
@@ -405,7 +408,7 @@ OU_SRM_NET::OU_SRM_NET(unsigned int i_layer_size, unsigned int h_layer_size,
         double round_zero, double alpha)
 {
     // run checks
-    if(i_layer_size != d_init.size() || i_layer_size != d_init.at(0).size())
+    if(i_layer_size != d_init.size() || h_layer_size != d_init.at(0).size())
     {
         // invalid initial delays
         fprintf(stderr, "invalid initial delays {%u} - {%u}\n", i_layer_size, (unsigned int)d_init.size());
@@ -446,6 +449,8 @@ OU_SRM_NET::OU_SRM_NET(unsigned int i_layer_size, unsigned int h_layer_size,
         fprintf(stderr, "invalid round to zero threshold\n");
         throw neuronex;
     }
+    if(DEBUG)
+        printf("Passed all SRM constructor checks\n");
     
     // initialize variable
     this->t = 0;
@@ -459,26 +464,37 @@ OU_SRM_NET::OU_SRM_NET(unsigned int i_layer_size, unsigned int h_layer_size,
         // create FSTN layer (input)
         this->input_layer.push_back(OU_FSTN(i, alpha));
     }
+    if(DEBUG)
+        printf("Created FSTN layer\n");
     for(unsigned int h = 0; h < h_layer_size; h++)
     {
         // create hidden layer
         // d_init.at(0) is bologna. its is virtually useless!
+        std::vector<double> tmp_d_init;
+        for(unsigned int j = 0; j < i_layer_size; j++)
+        {
+            tmp_d_init.push_back(d_init.at(j).at(h));
+        }
+
         this->hidden_layer.push_back(OU_LIF_SRM(h, i_layer_size, 
-        h_layer_size, d_init.at(0), w_init.at(h), tau_m, u_rest, init_v, t_reset,
+        h_layer_size, arma::Col<double>(tmp_d_init), w_init.at(h), tau_m, u_rest, init_v, t_reset,
         k_nought, round_zero));
     }
-    
+    if(DEBUG)
+        printf("Created Processing layer\n");
     // initialize network of spikes between input and hidden layers.
-    net_queue_i.reserve(i_layer_size);
+    net_queue_i.resize(i_layer_size);
     for(unsigned int i = 0; i < i_layer_size; i++)
     {
         // for every input network connections
         // reserve a queue for every processing neuron
-        net_queue_i.at(i).reserve(h_layer_size);
+        net_queue_i.at(i).resize(h_layer_size);
     }
 
     // initialize network of spikes between neurons in hidden layer
     net_queue_m.resize(h_layer_size);
+    if(DEBUG)
+        printf("Initialized network\n");
 }
 
 void OU_SRM_NET::process(std::vector<double> data)
@@ -491,6 +507,10 @@ void OU_SRM_NET::process(std::vector<double> data)
         throw ilex;
 
     }
+
+    if(DEBUG)
+        printf("Passed all process checks\n");
+
     // March time forward
     (this->t)++;
 
@@ -513,10 +533,14 @@ void OU_SRM_NET::process(std::vector<double> data)
             for(unsigned int i = 0; i < h_size; i++)
             {
                 // we add +1 to delay to account for current time
+                if(DEBUG)
+                    printf("Added spike comming from input to queue of neuron %u\n", i);
                 this->net_queue_i.at(j).at(i).push_back(D_Spike(this->d_ji.at(j).at(i) + 1, true));
             }
         }
     }
+    if(DEBUG)
+        printf("Added data into dendrites of input neurons\n");
 
     /**
      * Advance time in network connecting the input layer and the hidden
@@ -531,16 +555,26 @@ void OU_SRM_NET::process(std::vector<double> data)
         for(unsigned int i = 0; i < h_size; i++)
         {
             // is the queue empty? No spikes?
-            if(net_queue_i.at(j).at(i).size() == 0)
+            if(DEBUG)
+                printf("Processing network {%u} -> {%u}\n", j, i);
+
+            if(net_queue_i.at(j).at(i).empty())
             {
                 // send inactive spikes
+                if(DEBUG)
+                    printf("Filling dendrite\n");
                 this->hidden_layer.at(i).dendrite.at(j) = D_Spike();
+                if(DEBUG)
+                    printf("Empty spike train queue from input {%u} to {%u}\n", j, i);
             }
             else
             {
                 // We have spikes to process!
+                bool arrival_train_flag = false;
                 for(unsigned int spike = 0; spike < net_queue_i.at(j).at(i).size(); spike++)
                 {
+                    if(DEBUG)
+                        printf("Moving time in synapse {%u} to {%u} spike number %u\n", j, i, spike);
                     // Note: It is biologically impossible for two spikes in the same synapse
                     // to be delivered at the same time. It is possible for the spikes
                     // from two or more input neurons to arrive at the same time, but
@@ -551,15 +585,25 @@ void OU_SRM_NET::process(std::vector<double> data)
                     if(--net_queue_i.at(j).at(i).at(spike).d <= 0)
                     {
                         // Spike's delay is over
-                        this->hidden_layer.at(i).dendrite.at(j) = net_queue_i.at(j).at(i).at(spike);
-
+                        this->hidden_layer.at(i).dendrite.at(j) = D_Spike(0, true);
+                        if(DEBUG)
+                            printf("Spike arrived from input %u axon to processing dendrite number %u, spike: %d\n", j, i, this->hidden_layer.at(i).dendrite.at(j).signal);
                         // remove this spike. Has been delivered, not needed anymore.
-                        this->net_queue_i.erase(this->net_queue_i.begin() + spike);
+                        this->net_queue_i.at(j).at(i).erase(this->net_queue_i.at(j).at(i).begin()+spike);
 
                         // account for the shift in vector after deletion.
                         spike--;
+
+                        /**
+                         * Once a spike arrives, no more spikes can arrive,
+                         * 
+                         * I can avoid the use of flags by setting the dendrite back to nothing and only add
+                         * a positive spike when it happens!
+                        */
+                        arrival_train_flag = true;
+                        
                     }
-                    else
+                    else if(!arrival_train_flag)
                     {
                         // spike's delay not over
                         this->hidden_layer.at(i).dendrite.at(j) = D_Spike();
@@ -568,7 +612,8 @@ void OU_SRM_NET::process(std::vector<double> data)
             }
         }
     }
-
+    if(DEBUG)
+        printf("Advanced the network's time\n");
     /**
      * Advance time in lateral feedback network in hidden layer
      * 
@@ -582,7 +627,7 @@ void OU_SRM_NET::process(std::vector<double> data)
 
     // Create queue network for next epoch.
     std::vector<D_Spike> tmp_queue_m;
-    tmp_queue_m.reserve(this->h_size);
+    tmp_queue_m.resize(this->h_size);
 
     for(unsigned int i = 0; i < this->hidden_layer.size(); i++)
     {
@@ -590,11 +635,15 @@ void OU_SRM_NET::process(std::vector<double> data)
         this->hidden_layer.at(i).horizontal_dendrite = this->net_queue_m;
 
         // advance time in hidden layer/process
+        if(DEBUG)
+            printf("dendritic inputs for neuron %u: %d, %d\n", i, this->hidden_layer.at(i).dendrite.at(0).signal, this->hidden_layer.at(i).dendrite.at(1).signal);
         this->hidden_layer.at(i).t_pulse();
 
         // catch the hiden layer's axon and put it in feedback network
         tmp_queue_m.at(i) = this->hidden_layer.at(i).axon;
     }
+    if(DEBUG)
+        printf("Advanced/executed hidden layer neurons\n");
 
     // Update the spike train for lateral synapses.
     this->net_queue_m = tmp_queue_m;

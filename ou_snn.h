@@ -358,7 +358,7 @@ class OU_SRM_NET
     public: 
         /***/
         OU_SRM_NET(unsigned int i_layer_size, unsigned int h_layer_size, 
-        arma::Col<double> d_init, arma::Col<double> w_init, double tau_m,
+        std::vector<arma::Col<double>> d_init, std::vector<arma::Col<double>> w_init, double tau_m,
         double u_rest, double init_v, double t_reset, double k_nought,
         double round_zero, double alpha);
 
@@ -371,8 +371,9 @@ class OU_SRM_NET
         unsigned int h_size;
         /**
          * Delay vector for the ith processing neuron in hidden layer
+         * [input neuron, hidden layer neuron]
         */
-        arma::Col<double> d_ji;
+        std::vector<arma::Col<double>> d_ji;
         std::vector<OU_FSTN> input_layer;
         std::vector<OU_LIF_SRM> hidden_layer;
 
