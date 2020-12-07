@@ -78,7 +78,7 @@ class OU_LIF_SRM
         OU_LIF_SRM(unsigned int snn_id, int n_inputs, int n_lateral, 
         arma::Col<double> init_d, arma::Col<double> init_w, double tau_m, 
         double u_rest, double init_v, unsigned char t_reset,
-        double kappa_naugh, double round_zero);
+        double kappa_naugh, double round_zero, double x, double y);
 
         /**
           * Membrane potential function ( u(t) )
@@ -175,8 +175,6 @@ class OU_LIF_SRM
                  * Kappa filter value. 
                 */
                 double k;
-
-            private:
                 double tau_m;
                 double kappa_nought;
                 double min_val;
@@ -223,6 +221,8 @@ class OU_LIF_SRM
         unsigned char t_reset;
         double kappa_naugh;
         double round_zero;
+        double x;
+        double y;
 
 
         /**
@@ -336,12 +336,6 @@ class OU_FSTN
 };
 
 
-class OU_SNN_NET
-{
-
-};
-
-
 /**
  * The OU Spike Response Model Neural Network
  * 
@@ -360,7 +354,7 @@ class OU_SRM_NET
         OU_SRM_NET(unsigned int i_layer_size, unsigned int h_layer_size, 
         std::vector<arma::Col<double>> d_init, std::vector<arma::Col<double>> w_init, double tau_m,
         double u_rest, double init_v, double t_reset, double k_nought,
-        double round_zero, double alpha);
+        double round_zero, double alpha, unsigned int n_x, unsigned int n_y, double neural_distance);
 
         /***/
         void process(std::vector<double> data);
@@ -369,6 +363,10 @@ class OU_SRM_NET
         unsigned long long t;
         unsigned int i_size;
         unsigned int h_size;
+        unsigned int n_x;
+        unsigned int n_y;
+        double neural_distance;
+
         /**
          * Delay vector for the ith processing neuron in hidden layer
          * [input neuron, hidden layer neuron]
@@ -394,4 +392,32 @@ class OU_SRM_NET
         */
         std::vector<D_Spike> net_queue_m;
     // TODO.
+};
+
+/**
+ * Euclidean distance matrix
+ * 
+ * Creates a distance matrix for a given neural network with given distance unit.
+ * 
+ * @param snn_net a 2d-hidden-layer neural network
+ * @param distance_unit
+*/
+arma::Mat<double> euclidean_distance_matrix(OU_SRM_NET *snn_net, double distance_unit);
+
+/**
+ * Euclidean distance matrix
+ * 
+ * Creates a distance matrix for a given neural network with given distance unit.
+ * 
+ * @param snn_net 2-d vector [X/Y, point]
+ * @param distance_unit
+*/
+arma::Mat<double> euclidean_distance_matrix(std::vector<std::vector<double>> *point_list, double distance_unit);
+
+
+std::vector<arma::Col<double>> initial_weight_euclidean(arma::Mat<double> distance_matrix, double distance_unit, double sigma_1, double sigma_2);
+
+class OU_SRMN_TRAIN
+{
+    
 };

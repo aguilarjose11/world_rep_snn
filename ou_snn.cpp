@@ -22,6 +22,14 @@ class InputLayerException: public std::exception
   }
 } ilex;
 
+class euclideanexception: public std::exception
+{
+  virtual const char* what() const throw()
+  {
+    return "Invalid euclidean inputs";
+  }
+} eucex;
+
 
 D_Spike::D_Spike(unsigned int delay, bool signal)
 {
@@ -87,7 +95,7 @@ void OU_LIF_SRM::KappaFilter::t_pulse()
 OU_LIF_SRM::OU_LIF_SRM(unsigned int snn_id, int n_inputs, int n_lateral, 
         arma::Col<double> init_d, arma::Col<double> init_w, double tau_m, 
         double u_rest, double init_v, unsigned char t_reset,
-        double kappa_naugh, double round_zero)
+        double kappa_naugh, double round_zero, double x, double y)
 {   
     // run checks
     if(n_inputs != (int)init_d.size())
@@ -144,6 +152,8 @@ OU_LIF_SRM::OU_LIF_SRM(unsigned int snn_id, int n_inputs, int n_lateral,
     this->t_reset = t_reset;
     this->kappa_naugh = kappa_naugh;
     this->round_zero = round_zero;
+    this->x = x;
+    this->y = y;
 
     // construct neuron's particulars
     this->t = 0;
@@ -405,7 +415,7 @@ void OU_FSTN::t_pulse()
 OU_SRM_NET::OU_SRM_NET(unsigned int i_layer_size, unsigned int h_layer_size, 
         std::vector<arma::Col<double>> d_init, std::vector<arma::Col<double>> w_init, double tau_m,
         double u_rest, double init_v, double t_reset, double k_nought,
-        double round_zero, double alpha)
+        double round_zero, double alpha, unsigned int n_x, unsigned int n_y, double neural_distance)
 {
     // run checks
     if(i_layer_size != d_init.size() || h_layer_size != d_init.at(0).size())
@@ -449,6 +459,18 @@ OU_SRM_NET::OU_SRM_NET(unsigned int i_layer_size, unsigned int h_layer_size,
         fprintf(stderr, "invalid round to zero threshold\n");
         throw neuronex;
     }
+    if(h_layer_size != n_y*n_x)
+    {
+        // invalid number of neurons and requested layout
+        fprintf(stderr, "invalid number of neurons for requested layout.\n");
+        throw neuronex;
+    }
+    if(neural_distance <= 0)
+    {
+        // invalid neighboor distance
+        fprintf(stderr, "invalid neighboor neuron distance\n");
+        throw neuronex;
+    }
     if(DEBUG)
         printf("Passed all SRM constructor checks\n");
     
@@ -457,6 +479,10 @@ OU_SRM_NET::OU_SRM_NET(unsigned int i_layer_size, unsigned int h_layer_size,
     this->i_size = i_layer_size;
     this->h_size = h_layer_size;
     this->d_ji = d_init;
+    this->n_x = n_x;
+    this->n_y = n_y;
+    // neighboor distance. preferably 1
+    this->neural_distance = neural_distance;
     
     // Populate layers with neurons
     for(unsigned int i = 0; i < i_layer_size; i++)
@@ -466,7 +492,8 @@ OU_SRM_NET::OU_SRM_NET(unsigned int i_layer_size, unsigned int h_layer_size,
     }
     if(DEBUG)
         printf("Created FSTN layer\n");
-    for(unsigned int h = 0; h < h_layer_size; h++)
+    
+    for(unsigned int h = 0, x = 0, y = 0; h < h_layer_size; h++)
     {
         // create hidden layer
         // d_init.at(0) is bologna. its is virtually useless!
@@ -478,7 +505,17 @@ OU_SRM_NET::OU_SRM_NET(unsigned int i_layer_size, unsigned int h_layer_size,
 
         this->hidden_layer.push_back(OU_LIF_SRM(h, i_layer_size, 
         h_layer_size, arma::Col<double>(tmp_d_init), w_init.at(h), tau_m, u_rest, init_v, t_reset,
-        k_nought, round_zero));
+        k_nought, round_zero, x, y));
+        if(++x >= n_x)
+        {
+            x = 0;
+            y++;
+        }
+        if(y > n_y)
+        {
+            fprintf(stderr, "Error!\n");
+            throw neuronex;
+        }
     }
     if(DEBUG)
         printf("Created Processing layer\n");
@@ -653,4 +690,98 @@ void OU_SRM_NET::process(std::vector<double> data)
      * Is it a way to have the feedback affect the neural membrane
      * in this epoch? like a limit? or something?!
     */
+}
+
+
+/* Distance Matrix builder */
+
+arma::Mat<double> euclidean_distance_matrix(OU_SRM_NET *snn_net, double distance_unit)
+{
+    arma::Mat<double> distance_matrix(snn_net->h_size, snn_net->h_size);
+    double euclidean_dist = 0.0;
+    double x_1, x_2, y_1, y_2;
+    if(DEBUG)
+        printf("Matrix Size: %u x %u\n", snn_net->h_size, snn_net->h_size);
+    
+    for(unsigned int neuron_m = 0; neuron_m < snn_net->h_size; neuron_m++)
+    {
+        for(unsigned int neuron_n = 0; neuron_n < snn_net->h_size; neuron_n++)
+        {
+            x_1 = snn_net->hidden_layer.at(neuron_m).x;
+            y_1 = snn_net->hidden_layer.at(neuron_m).y;
+            x_2 = snn_net->hidden_layer.at(neuron_n).x;
+            y_2 = snn_net->hidden_layer.at(neuron_n).y;
+            euclidean_dist = distance_unit * sqrt(pow(x_2 - x_1, 2) + pow(y_2 - y_1, 2));
+            if(DEBUG)
+                printf("Euclidean calculation: %f\n", euclidean_dist);
+            distance_matrix(neuron_m, neuron_n) = euclidean_dist;
+        }
+        if(DEBUG)
+            printf("neuron %u -> (%f, %f)\n", neuron_m, x_1, y_1);
+    }
+    return distance_matrix;
+}
+
+arma::Mat<double> euclidean_distance_matrix(std::vector<std::vector<double>> *point_list, double distance_unit)
+{
+    const unsigned int X_INDEX = 0, Y_INDEX = 1;
+    if(point_list->at(X_INDEX).size() != point_list->at(Y_INDEX).size())
+    {
+        // Problem with the input points
+        fprintf(stderr, "Input Point matrix is not well shapped.\n");
+        throw eucex;
+    }
+    arma::Mat<double> distance_matrix(point_list->at(X_INDEX).size(), point_list->at(0).size());
+    double euclidean_dist = 0.0;
+    double x_1, x_2, y_1, y_2;
+    if(DEBUG)
+        printf("Matrix Size: %u x %u\n", (unsigned int)point_list->at(0).size(), (unsigned int)point_list->at(0).size());
+    
+    for(unsigned int point_m = 0; point_m < point_list->at(0).size(); point_m++)
+    {
+        for(unsigned int point_n = 0; point_n < point_list->at(0).size(); point_n++)
+        {
+            x_1 = point_list->at(X_INDEX).at(point_m);
+            y_1 = point_list->at(Y_INDEX).at(point_m);
+            x_2 = point_list->at(X_INDEX).at(point_n);
+            y_2 = point_list->at(Y_INDEX).at(point_n);
+            euclidean_dist = distance_unit * sqrt(pow(x_2 - x_1, 2) + pow(y_2 - y_1, 2));
+            if(DEBUG)
+                printf("Euclidean calculation: %f\n", euclidean_dist);
+            distance_matrix(point_m, point_n) = euclidean_dist;
+        }
+        if(DEBUG)
+            printf("neuron %u -> (%f, %f)\n", point_m, x_1, y_1);
+    }
+    return distance_matrix;
+}
+
+/* Initial weight calculator */
+
+std::vector<arma::Col<double>> initial_weight_euclidean(arma::Mat<double> distance_matrix, double distance_unit, double sigma_1, double sigma_2)
+{
+    // Calculate initial weight formula
+    arma::Mat<double> weight_matrix = 2*arma::exp(-arma::pow(distance_matrix, 2)/2*pow(sigma_1, 2)) - arma::exp(-arma::pow(distance_matrix, 2)/2*pow(sigma_2, 2));
+    if(DEBUG)
+    {
+        printf("Matrix Content before weights\n\n");
+        for(unsigned int i = 0; i < weight_matrix.n_rows; i++)
+        {
+            for(unsigned int j = 0; j < weight_matrix.n_cols; j++)
+            {
+                printf("%f\t", weight_matrix(i, j));
+            }
+            printf("\n");
+        }
+    }
+    // Transpose to simplify data extraction
+    weight_matrix = arma::trans(weight_matrix);
+    // Create final data structure
+    std::vector<arma::Col<double>> weight_struct;
+    // fill final data structure
+    for(unsigned int i = 0; i < weight_matrix.n_rows; i++)
+    {
+        weight_struct.push_back(arma::Col<double>(weight_matrix.col(i)));
+    }
+    return weight_struct;
 }
