@@ -758,7 +758,7 @@ arma::Mat<double> euclidean_distance_matrix(std::vector<std::vector<double>> *po
 
 /* Initial weight calculator */
 
-std::vector<arma::Col<double>> initial_weight_euclidean(arma::Mat<double> distance_matrix, double distance_unit, double sigma_1, double sigma_2)
+std::vector<arma::Col<double>> initial_weight_euclidean(arma::Mat<double> distance_matrix, double sigma_1, double sigma_2)
 {
     // Calculate initial weight formula
     arma::Mat<double> weight_matrix = 2*arma::exp(-arma::pow(distance_matrix, 2)/2*pow(sigma_1, 2)) - arma::exp(-arma::pow(distance_matrix, 2)/2*pow(sigma_2, 2));
@@ -784,4 +784,31 @@ std::vector<arma::Col<double>> initial_weight_euclidean(arma::Mat<double> distan
         weight_struct.push_back(arma::Col<double>(weight_matrix.col(i)));
     }
     return weight_struct;
+}
+
+std::vector<arma::Col<double>> initial_delay_vectors(unsigned int n_neurons, unsigned int n_delays, double l_bound, double h_bound)
+{
+    // run checks to input 
+    if(l_bound > h_bound)
+    {
+        // invalid lower and upper ranges
+        fprintf(stderr, "Invalid range for initial delay vector");
+        throw eucex;
+    }
+    if(DEBUG)
+        printf("Passed initial delay vector's checks.\n");
+    // Initialize pseudo-random number generator
+    srand(time(NULL));
+    // Calculate range's distance
+    double range = h_bound - l_bound;
+    // Create and initialize delay matrix
+    std::vector<arma::Col<double>> delay_matrix(n_neurons, arma::Col<double>(n_delays));
+    // fill in random delay matrix
+    for(int i = 0; i < n_neurons; i++)
+    {
+        for(int j = 0; j < n_delays; j++)
+        {
+            delay_matrix.at(i).at(j) = l_bound + ((rand()/RAND_MAX) * range);
+        }
+    }
 }

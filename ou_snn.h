@@ -414,10 +414,80 @@ arma::Mat<double> euclidean_distance_matrix(OU_SRM_NET *snn_net, double distance
 */
 arma::Mat<double> euclidean_distance_matrix(std::vector<std::vector<double>> *point_list, double distance_unit);
 
+/**
+ * Random Initial Delay Calculator
+ * 
+ * Creates a random matrix containing delays for n_neuron input neurons for n_delays postsynaptic neurons.
+ * These delays are created to be specifically used as delays between input neurons and hidden/proccessing.
+ * 
+ * @param n_neurons number of input neurons in matrix
+ * @param n_delays 
+ * @param l_bound
+ * @param h_bound
+*/
+std::vector<arma::Col<double>> initial_delay_vectors(unsigned int n_neurons, unsigned int n_delays, double l_bound, double h_bound);
 
-std::vector<arma::Col<double>> initial_weight_euclidean(arma::Mat<double> distance_matrix, double distance_unit, double sigma_1, double sigma_2);
+/**
+ * Initial Weight Calculator
+ * 
+ * Creates a matrix containing initial weights for a neural network using a distance matrix.
+ * @param distance_matrix Distance matrix to use
+ * @param sigma_1 Initial weight distribution constant #1
+ * @param sigma_2 Initial weight distribution constant #2
+*/
+std::vector<arma::Col<double>> initial_weight_euclidean(arma::Mat<double> distance_matrix, double sigma_1, double sigma_2);
 
+/**
+ * Neural Network Training Class
+ * 
+ * This class takes care of training a Spiking neural network 
+ * using sets of data points.
+*/
 class OU_SRMN_TRAIN
 {
-    
+    public:
+    // TODO: Define constructors before creating code!!!
+        /**
+         * Spiking Neural Network Trainning constructor
+         * 
+         * @param i_layer_size Number of input neurons
+         * @param h_layer_size Number of neurons in hidden layer
+         * @param tau_m Constant of decay for post-synaptic potential
+         * @param u_rest Constant potential of neuron
+         * @param init_v Initial Threshold
+         * @param t_reset Refractory time after action potential
+         * @param k_nought Height of post-synaptic potential
+         * @param round_zero Minimum value before post-synaptic potential is treated as zero
+         * @param alpha First-Spike-Time scalling factor
+         * @param n_x X dimension maximum value
+         * @param n_y Y dimension maximum value
+         * @param neural_distance Unit distance betwee neurons
+         * @param sigma_1 Initial weight distribution constant #1
+         * @param sigma_2 Initial weight distribution constant #2
+        */
+        OU_SRMN_TRAIN(unsigned int i_layer_size, unsigned int h_layer_size, double tau_m,
+        double u_rest, double init_v, double t_reset, double k_nought,
+        double round_zero, double alpha, unsigned int n_x, unsigned int n_y, double neural_distance, 
+        double distance_unit, double sigma_1, double sigma_2);
+       
+        /**
+         * Spiking Neural Network Trainning constructor
+         * 
+         * @param i_layer_size Number of input neurons
+         * @param h_layer_size Number of neurons in hidden layer
+         * @param tau_m Constant of decay for post-synaptic potential
+         * @param u_rest Constant potential of neuron
+         * @param init_v Initial Threshold
+         * @param t_reset Refractory time after action potential
+         * @param k_nought Height of post-synaptic potential
+         * @param round_zero Minimum value before post-synaptic potential is treated as zero
+         * @param alpha First-Spike-Time scalling factor
+         * @param n_x X dimension maximum value
+         * @param n_y Y dimension maximum value
+         * @param neural_distance Unit distance betwee neurons
+        */
+        OU_SRMN_TRAIN(unsigned int i_layer_size, unsigned int h_layer_size, 
+        std::vector<arma::Col<double>> d_init, std::vector<arma::Col<double>> w_init, double tau_m,
+        double u_rest, double init_v, double t_reset, double k_nought,
+        double round_zero, double alpha, unsigned int n_x, unsigned int n_y, double neural_distance);
 };
