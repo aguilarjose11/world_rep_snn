@@ -14,6 +14,7 @@
 
 #define K_LIST_INPUT_SYNAPSES 0
 #define K_LIST_LATERAL_SYNAPSES 1
+#define NO_WINNER_SPIKE (UINT_MAX) - 1
 
 /**
  * Delayable Spike
@@ -93,7 +94,24 @@ class OU_LIF_SRM
         **/
         double membrane_potential();
 
+        /**
+         * Reset runction
+         * 
+         * This function resets a neuron back to its initial state.
+         * 
+         * @param None
+        */
+       void reset();
 
+       /**
+         * Reset runction
+         * 
+         * This function resets a neuron back to its initial state using new delays and weights.
+         * 
+         * @param init_d initial delays
+         * @param init_w initial weight
+        */
+       void reset(arma::Col<double> init_d, arma::Col<double> init_w);
 
 
         /**
@@ -122,6 +140,13 @@ class OU_LIF_SRM
          * The conditions for the membrane to fire.
         */
         bool fire_condition(double u);
+
+        /**
+         * Disable function
+         * 
+         * Used for training. This function disables the activation of the neuron
+        */
+       void disable();
 
         /**
          * Membrane Behaviour Class
@@ -182,6 +207,7 @@ class OU_LIF_SRM
                 bool near_zero;
         };
 
+
         // Constructor variables
         /**
          * neuron's own index within a layer.
@@ -223,6 +249,7 @@ class OU_LIF_SRM
         double round_zero;
         double x;
         double y;
+        bool disabled;
 
 
         /**
@@ -313,6 +340,8 @@ class OU_FSTN
         */
         void t_pulse();
 
+        void reset();
+
         unsigned int snn_id;
 
         double alpha;
@@ -356,8 +385,40 @@ class OU_SRM_NET
         double u_rest, double init_v, double t_reset, double k_nought,
         double round_zero, double alpha, unsigned int n_x, unsigned int n_y, double neural_distance);
 
-        /***/
+        /**
+         * Process function
+         * 
+         * Processes the given data vector and moves the network forward
+        */
         void process(std::vector<double> data);
+
+        /**
+         * Spike checker
+         * 
+         * Checks wether there is a winner spike
+         * 
+         * @return NO_WINNER_SPIKE if no spikes, else, winner neuron's index.
+        */
+        unsigned int find_winner_spike();
+
+        /**
+         * Reset runction
+         * 
+         * This function resets a neural network back to its initial state.
+         * 
+         * @param None
+        */
+       void reset();
+
+       /**
+         * Reset runction
+         * 
+         * This function resets a neural network back to its initial state using new delays and weights.
+         * 
+         * @param init_d initial delays
+         * @param init_w initial weight
+        */
+       void reset(arma::Col<double> init_d, arma::Col<double> init_w);
 
         // variables
         unsigned long long t;
@@ -366,6 +427,10 @@ class OU_SRM_NET
         unsigned int n_x;
         unsigned int n_y;
         double neural_distance;
+        // is it there a winner spike?
+        bool has_winner;
+        // winner spike
+        unsigned int winner_neuron;
 
         /**
          * Delay vector for the ith processing neuron in hidden layer
@@ -423,9 +488,9 @@ arma::Mat<double> euclidean_distance_matrix(std::vector<std::vector<double>> *po
  * @param n_neurons number of input neurons in matrix
  * @param n_delays 
  * @param l_bound
- * @param h_bound
+ * @param u_bound
 */
-std::vector<arma::Col<double>> initial_delay_vectors(unsigned int n_neurons, unsigned int n_delays, double l_bound, double h_bound);
+std::vector<arma::Col<double>> initial_delay_vectors(unsigned int n_neurons, unsigned int n_delays, double l_bound, double u_bound);
 
 /**
  * Initial Weight Calculator
@@ -438,6 +503,14 @@ std::vector<arma::Col<double>> initial_delay_vectors(unsigned int n_neurons, uns
 std::vector<arma::Col<double>> initial_weight_euclidean(arma::Mat<double> distance_matrix, double sigma_1, double sigma_2);
 
 /**
+ * Point map Function
+ * 
+ * Creates a list of points for a map of dimensions x and y.
+ * [dimension (x or y), nth point]
+*/
+std::vector<std::vector<double>> euclidean_point_map(unsigned int x, unsigned int y);
+
+/**
  * Neural Network Training Class
  * 
  * This class takes care of training a Spiking neural network 
@@ -447,12 +520,18 @@ class OU_SRMN_TRAIN
 {
     public:
     // TODO: Define constructors before creating code!!!
+        OU_SRMN_TRAIN() = default;
         /**
-         * Spiking Neural Network Trainning constructor
+         * Spiking Neural Network Trainning constructor. Any parameter marked
+         * as (hp) is considered a training hyperparameter.
+         * 
+         * The constructor will take care of initializing a SNN. Will take care
+         * of any math and calculations required for the constructors of the spiking
+         * neural nets.
          * 
          * @param i_layer_size Number of input neurons
          * @param h_layer_size Number of neurons in hidden layer
-         * @param tau_m Constant of decay for post-synaptic potential
+         * @param tau_m Constant of decay for post-synaptic potential 
          * @param u_rest Constant potential of neuron
          * @param init_v Initial Threshold
          * @param t_reset Refractory time after action potential
@@ -464,30 +543,95 @@ class OU_SRMN_TRAIN
          * @param neural_distance Unit distance betwee neurons
          * @param sigma_1 Initial weight distribution constant #1
          * @param sigma_2 Initial weight distribution constant #2
+         * @param l_bound Lower bound for initial delay vector's values
+         * @param u_bound Upper bound for initial delay vector's values
+         * @param sigma_neighbor Neighborhood function's sigma parameter (HP)
+         * @param tau_alpha Weight excitatory change constant (hp)
+         * @param tau_beta weight inhibitory change constant (hp)
+         * @param eta_w Weight learning step constant (hp)
+         * @param eta_d delay learning step constant (hp)
+         * @param t_max Maximum time of run for each sample. (hp)
+         * @param t_delta time after winner spike considered causatory. (hp)
+         * @param ltd_max maximum long term depression applied. (hp)
         */
         OU_SRMN_TRAIN(unsigned int i_layer_size, unsigned int h_layer_size, double tau_m,
         double u_rest, double init_v, double t_reset, double k_nought,
         double round_zero, double alpha, unsigned int n_x, unsigned int n_y, double neural_distance, 
-        double distance_unit, double sigma_1, double sigma_2);
-       
+        double distance_unit, double sigma_1, double sigma_2, double l_bound, double u_bound,
+        double sigma_neighbor, double tau_alpha, double tau_beta, double eta_w, double eta_d,
+        unsigned int t_max, unsigned int t_delta, double ltd_max);
+
         /**
-         * Spiking Neural Network Trainning constructor
+         * Training function
          * 
-         * @param i_layer_size Number of input neurons
-         * @param h_layer_size Number of neurons in hidden layer
-         * @param tau_m Constant of decay for post-synaptic potential
-         * @param u_rest Constant potential of neuron
-         * @param init_v Initial Threshold
-         * @param t_reset Refractory time after action potential
-         * @param k_nought Height of post-synaptic potential
-         * @param round_zero Minimum value before post-synaptic potential is treated as zero
-         * @param alpha First-Spike-Time scalling factor
-         * @param n_x X dimension maximum value
-         * @param n_y Y dimension maximum value
-         * @param neural_distance Unit distance betwee neurons
+         * This function will take care of the training of a spiking neural net.
+         * The algorithm used is spike time-dependan plasticity (STDP).
+         * 
+         * @param X Data to be used.
         */
-        OU_SRMN_TRAIN(unsigned int i_layer_size, unsigned int h_layer_size, 
-        std::vector<arma::Col<double>> d_init, std::vector<arma::Col<double>> w_init, double tau_m,
-        double u_rest, double init_v, double t_reset, double k_nought,
-        double round_zero, double alpha, unsigned int n_x, unsigned int n_y, double neural_distance);
+       void train(std::vector<std::vector<double>> X);
+
+        /**
+         * General Neighborhood function
+         * 
+         * Limits the amount of change based on distance between neuron M and N
+        */
+       double neighbor(OU_LIF_SRM m, OU_LIF_SRM n);
+
+        /**
+         * Delay updater.
+         * 
+         * Using the winner neuron (already found inside network), updates the delays.
+        */
+        void update_delays(std::vector<double> sample);
+
+        /**
+         * Excitatory weight updating function
+         * 
+         * This function takes care of updating the excitatory synapse weights for a network
+         * where at least one neuron fired.
+         * 
+         * @param network copy of SNN with fired neurons deactivated
+         * @param fired_neurons pointer to list to add all fired neurons
+         * @param t_epoch Maximum length of time for a new spike to be considered caused by previously-fired neuron.
+         * @param sample Data to be used.
+         * @param fired_neuron index number of fired neuron
+        */
+        void update_weights(OU_SRM_NET network, std::vector<unsigned int> *fired_neurons, unsigned int t_epoch, std::vector<double> sample, unsigned int fired_neuron);
+
+        /**
+         * Inhibitory weight updating function
+         * 
+         * This function takes care of updating the neurons given in a list to be considered as inhibitory connections.
+         * 
+        */
+        void update_inhibitory_weights(std::vector<unsigned int> *updated_synapses);
+
+
+        // Algorithm hyperparameters
+        double sigma_neighbor;
+        double tau_alpha;
+        double tau_beta;
+        double eta_w;
+        double eta_d;
+        unsigned int t_max;
+        unsigned int t_delta;
+        double ltd_max;
+
+        // spatial distance matrix
+        arma::Mat<double> distance_matrix;
+        std::vector<std::vector<double>> point_map;
+
+        // spiking neural network
+        OU_SRM_NET *snn;
+
+
+
+
+
+
+
+
+
+        
 };

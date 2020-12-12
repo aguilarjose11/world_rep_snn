@@ -267,6 +267,40 @@ int main(int argc, const char **argv) {
         printf("\n");
     }
 
+    // Testing Random delay generator
+    printf("\nTesting Random Delay generator\n");
+    std::vector<arma::Col<double>> initial_delays;
+    unsigned int n_neurons = 2;
+    unsigned int n_delays = 10;
+    double l_bound = 1;
+    double u_bound = 3;
+
+    initial_delays = initial_delay_vectors(n_neurons, n_delays, l_bound, u_bound);
+
+    printf("Delay Matrix Content\n\n");
+    for(unsigned int i = 0; i < initial_delays.size(); i++)
+    {
+        for(unsigned int j = 0; j < initial_delays.at(i).size(); j++)
+        {
+            printf("%f\t", initial_delays.at(i).at(j));
+        }
+        printf("\n");
+    }
+
+    // Test point map creator
+    printf("\nTesting point map creator.\n");
+    unsigned int x_size = 4;
+    unsigned int y_size = 7;
+    std::vector<std::vector<double>> map_ = euclidean_point_map(x_size, y_size);
+    printf("Point Map Matrix Content\n\n");
+
+    for(unsigned int j = 0; j < x_size*y_size; j++)
+    {
+        printf("(%f, %f)\t", map_.at(0).at(j), map_.at(1).at(j));
+    }
+
+
+
     // Armadillo version printout
     arma::arma_version ver;
     printf("Armadillo Version: %s\n", ver.as_string().c_str());

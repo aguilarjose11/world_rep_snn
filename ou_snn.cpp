@@ -1,5 +1,6 @@
 #include <math.h>
 #include <exception>
+#include <algorithm>
 #include "ou_snn.h"
 
 #define ACTION_POTENTIAL (SHRT_MAX) - 1
@@ -154,6 +155,7 @@ OU_LIF_SRM::OU_LIF_SRM(unsigned int snn_id, int n_inputs, int n_lateral,
     this->round_zero = round_zero;
     this->x = x;
     this->y = y;
+    this->disabled = false;
 
     // construct neuron's particulars
     this->t = 0;
@@ -325,7 +327,7 @@ void OU_LIF_SRM::t_pulse()
 
 void OU_LIF_SRM::solve()
 {
-    if(!this->fired)
+    if(!this->fired && !this->disabled)
     {
         if(fire_condition(membrane_potential()))
         {
@@ -346,12 +348,24 @@ void OU_LIF_SRM::solve()
             this->axon = no_fire_spike;
         }
     }
+    else
+    {
+        // no firing
+        D_Spike no_fire_spike(0, 0);
+        this->axon = no_fire_spike;
+    }
+    
     
 }
 
 bool OU_LIF_SRM::fire_condition(double u)
 {
     return u >= this->v;
+}
+
+void OU_LIF_SRM::disable()
+{
+    this->disabled = true;
 }
 
 /* end of OU_LIF_SRM */
@@ -692,6 +706,29 @@ void OU_SRM_NET::process(std::vector<double> data)
     */
 }
 
+unsigned int OU_SRM_NET::find_winner_spike()
+{
+    if(this->has_winner)
+    {
+        return this->winner_neuron;
+    }
+    else
+    {
+        for(unsigned int i = 0; i < this->h_size; i++)
+        {
+            if(this->hidden_layer.at(i).fired)
+            {
+                // we found a spike that just fired!
+                this->winner_neuron = i;
+                this->has_winner = true;
+                return this->winner_neuron;
+            }
+        }
+        return NO_WINNER_SPIKE;
+    }
+    
+}
+
 
 /* Distance Matrix builder */
 
@@ -804,11 +841,208 @@ std::vector<arma::Col<double>> initial_delay_vectors(unsigned int n_neurons, uns
     // Create and initialize delay matrix
     std::vector<arma::Col<double>> delay_matrix(n_neurons, arma::Col<double>(n_delays));
     // fill in random delay matrix
-    for(int i = 0; i < n_neurons; i++)
+    for(unsigned int i = 0; i < n_neurons; i++)
     {
-        for(int j = 0; j < n_delays; j++)
+        for(unsigned int j = 0; j < n_delays; j++)
         {
-            delay_matrix.at(i).at(j) = l_bound + ((rand()/RAND_MAX) * range);
+            delay_matrix.at(i).at(j) = l_bound + (((double)rand()/RAND_MAX) * range);
         }
     }
+    return delay_matrix;
+}
+
+
+std::vector<std::vector<double>> euclidean_point_map(unsigned int x, unsigned int y)
+{
+    std::vector<std::vector<double>> map_(2, std::vector<double>(x*y));
+    for(unsigned int n = 0, n_point = 0; n < x; n++)
+    {
+        for(unsigned int m = 0; m < y; m++, n_point++)
+        {
+            map_.at(0).at(n_point) = n;
+            map_.at(1).at(n_point) = m;
+        }
+    }
+    return map_;
+}
+
+OU_SRMN_TRAIN::OU_SRMN_TRAIN(unsigned int i_layer_size, unsigned int h_layer_size, double tau_m,
+        double u_rest, double init_v, double t_reset, double k_nought,
+        double round_zero, double alpha, unsigned int n_x, unsigned int n_y, double neural_distance, 
+        double distance_unit, double sigma_1, double sigma_2, double l_bound, double u_bound,
+        double sigma_neighbor, double tau_alpha, double tau_beta, double eta_w, double eta_d,
+        unsigned int t_max, unsigned int t_delta, double ltd_max)
+{
+    // No running checks here!
+    // Set up network variables
+
+    // Set up Neural Network
+
+    std::vector<arma::Col<double>> d_init = initial_delay_vectors(i_layer_size, h_layer_size, l_bound, u_bound);
+    // create distance matrix between nodes. This will be spatial in nature
+    this->point_map = euclidean_point_map(n_x, n_y);
+    // Create spatial distance matrix. Not really a lot of information unless combined with delays.
+    this->distance_matrix = euclidean_distance_matrix(&(this->point_map), distance_unit);
+    // use distance matrix to create initial weight matrix
+    std::vector<arma::Col<double>> w_init = initial_weight_euclidean(distance_matrix, sigma_1, sigma_2);
+    // initialize the layer.
+    this->snn = new OU_SRM_NET(i_layer_size, h_layer_size, d_init, w_init, tau_m, u_rest, init_v, t_reset, k_nought, round_zero, alpha, n_x, n_y, neural_distance);
+
+    // store hyperparameters
+    this->sigma_neighbor = sigma_neighbor;
+    this->tau_alpha = tau_alpha;
+    this->tau_beta = tau_beta;
+    this->eta_w = eta_w;
+    this->eta_d = eta_d;
+    this->t_max = t_max;
+    this->t_delta = t_delta;
+    this->ltd_max = ltd_max;
+}
+
+void OU_SRMN_TRAIN::train(std::vector<std::vector<double>> X)
+{
+    // training samples
+    std::vector<double> sample = X.at(0);
+    // Has the algorith timed out?
+    bool time_out = false;
+    // for every training sample...
+    for(unsigned int n_sample = 0; n_sample < X.size(); n_sample++, sample = X.at(n_sample))
+    {
+        // feed training sample and run algorithm until a spike is found
+        time_out = false;
+        for(unsigned int t_t = 0; t_t < this->t_max; t_t++)
+        {
+            // process the current point until we have a spike
+            this->snn->process(sample);
+            // do we have a winner spike?
+            
+
+            if(this->snn->find_winner_spike() != NO_WINNER_SPIKE)
+            {
+                // update weights
+                // make shallow copy of SNN
+                OU_SRM_NET snn_copy = *(this->snn);
+                // disable the winner neuron
+                snn_copy.hidden_layer.at(this->snn->winner_neuron).disable();
+                // Add winner neuron to list of fired neurons
+                std::vector<unsigned int> fired_neurons;
+                fired_neurons.push_back(this->snn->winner_neuron);
+                // pass to weight updater to find possible neurons triggered by winner
+                this->update_weights(snn_copy, &fired_neurons, this->t_delta, sample, this->snn->winner_neuron);
+                // excitatory weights should have been updated by now.
+                // update inhibitory 
+                this->update_inhibitory_weights(&fired_neurons);
+                // modify delays
+                update_delays(sample);
+                // reset neuron with new delays/weights and input neurons
+                this->snn->reset();
+                // break out...
+                break;
+            }
+        }
+        // have we timed out?
+        if(time_out)
+        {
+            // yep. No change in weights ot delays.
+            fprintf(stderr, "WARNING (Timeout): No winner spike exists after %u epochs. Maybe increase t_max or change the other hyperparameters?\n", this->t_max);
+        }
+    }
+    // At this point we should have finished our training.
+    // consider setting everything back to zero if needed to retrain
+}
+
+double OU_SRMN_TRAIN::neighbor(OU_LIF_SRM m, OU_LIF_SRM n)
+{
+    // return general neighbor function
+    return exp(pow(this->distance_matrix(m.snn_id, n.snn_id), 2) / (2*pow(this->sigma_neighbor, 2)));
+}
+
+void OU_SRMN_TRAIN::update_delays(std::vector<double> sample)
+{
+    // for every input neuron
+    for(unsigned int j = 0; j < this->snn->i_size; j++)
+    {
+        // for every processing neuron
+        for(unsigned int m = 0; m < this->snn->h_size; m++)
+        {
+            double delta_d = this->eta_d*this->neighbor(this->snn->hidden_layer.at(m), this->snn->hidden_layer.at(this->snn->winner_neuron))*(sample.at(j)-this->snn->d_ji.at(j).at(m));
+            this->snn->d_ji.at(j).at(m) += delta_d;
+        }
+    }
+}
+
+/**
+ * Note that when an excitatory connection happens, also, an inhibitory connection sould be placed between the postsynaptic and presynaptic neurons:
+ * So we place LTP the the connection M->N, but we utilize a LTD for M<-N.
+ * This is because if we see neuron N from the perspective of it being a presynaptic neuron, we will realize that t_n>t_m. because of this, we shall
+ * apply LTD. this practically "distances" the neurons and only connects the ones that may have things in common.
+ * Even more important to keep track of the connections we modify!
+*/
+void OU_SRMN_TRAIN::update_weights(OU_SRM_NET network, std::vector<unsigned int> *fired_neurons, unsigned int t_epoch, std::vector<double> sample, unsigned int fired_neuron)
+{
+    // Note: maybe do epoch + 1 for updating function?
+    for(unsigned int epoch = 0; epoch < t_epoch; epoch++)
+    {
+        // run t_epoch times to see if we find a triggered spike
+        network.process(sample);
+        for(unsigned int neuron = 0; neuron < network.h_size; neuron++)
+        {  
+            // Has a neuron fired?
+            if(network.hidden_layer.at(neuron).axon.signal)
+            {
+                //yep
+                // update weights
+                // excitatory change
+                double delta_w_ij = this->eta_w*neighbor(network.hidden_layer.at(fired_neuron), network.hidden_layer.at(neuron))*(1-this->snn->hidden_layer.at(neuron).w_m.at(fired_neuron))*exp(epoch/this->tau_alpha);
+                this->snn->hidden_layer.at(neuron).w_m.at(fired_neuron) += delta_w_ij;
+                // inhibitory change
+                double delta_w_ji = -this->eta_w*neighbor(network.hidden_layer.at(neuron), network.hidden_layer.at(fired_neuron))*(1+this->snn->hidden_layer.at(fired_neuron).w_m.at(neuron))*exp(epoch/this->tau_beta);
+                this->snn->hidden_layer.at(fired_neuron).w_m.at(neuron) += delta_w_ji;
+                // add neuron to list of fired neurons
+                fired_neurons->push_back(neuron);
+                // make a copy of the network
+                OU_SRM_NET n_net = network;
+                // disable fired neuron
+                network.hidden_layer.at(neuron).disable();
+                // update weights recursively
+                update_weights(n_net, fired_neurons, t_epoch, sample, neuron);
+                // by the time that ends, we continue on our analysis.
+                continue;
+
+
+            }
+        }
+    }
+    // by this point all neurons should have been updated!
+}
+
+/**
+ * Note that we are using a constant value for the amount of change. This may not affect excitatory synapses,
+ * but for inhibitory it just may.
+*/
+void OU_SRMN_TRAIN::update_inhibitory_weights(std::vector<unsigned int> *updated_synapses)
+{
+    // for every neuron...
+    for(unsigned int m = 0; m < this->snn->h_size; m++)
+    {
+        // for every neuron ahead of this one (m)
+        for(unsigned int n = m + 1; n < this->snn->h_size; m++)
+        {
+            // check if the synapses were modified previously.
+            if(std::find(updated_synapses->begin(), updated_synapses->end(), m) != updated_synapses->end() && 
+               std::find(updated_synapses->begin(), updated_synapses->end(), n) != updated_synapses->end())
+            {
+                // These neurons were updated. we skip them!
+                continue;
+            }
+            // update the synapses as inhibitory
+            // Testing values: using t_max. possible: t_delta.
+            double delta_w_mn = -this->eta_w*neighbor(this->snn->hidden_layer.at(m), this->snn->hidden_layer.at(n))*(1+this->snn->hidden_layer.at(n).w_m.at(m))*exp(this->t_max/this->tau_beta);
+            this->snn->hidden_layer.at(n).w_m.at(m) += delta_w_mn;
+            double delta_w_nm = -this->eta_w*neighbor(this->snn->hidden_layer.at(n), this->snn->hidden_layer.at(m))*(1+this->snn->hidden_layer.at(m).w_m.at(n))*exp(this->t_max/this->tau_beta);
+            this->snn->hidden_layer.at(m).w_m.at(n) += delta_w_nm;
+            // values updated. anything else? nah.
+        }
+    }
+    // inhibitory connections updated!
 }
