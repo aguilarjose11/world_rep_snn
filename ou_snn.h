@@ -67,7 +67,7 @@ class OU_LIF_SRM
          * @param snn_id Neuron's id withing a layer
          * @param n_inputs  number of input synapses
          * @param n_lateral number of lateral synapses
-         * @param init_d initial delay vector for input synapses
+         * @param init_d initial delay vector for input synapses (Deprecated)
          * @param init_w Initial weight vector for lateral synapses
          * @param tau_m membrane behaviour constant. (spike decay)
          * @param u_rest Resting potential
@@ -102,17 +102,6 @@ class OU_LIF_SRM
          * @param None
         */
        void reset();
-
-       /**
-         * Reset runction
-         * 
-         * This function resets a neuron back to its initial state using new delays and weights.
-         * 
-         * @param init_d initial delays
-         * @param init_w initial weight
-        */
-       void reset(arma::Col<double> init_d, arma::Col<double> init_w);
-
 
         /**
          * March-Forward function
@@ -404,7 +393,8 @@ class OU_SRM_NET
         /**
          * Reset runction
          * 
-         * This function resets a neural network back to its initial state.
+         * This function resets a neural network back to its initial state. Uses the delays
+         * already within the network.
          * 
          * @param None
         */
@@ -540,9 +530,10 @@ class OU_SRMN_TRAIN
          * @param alpha First-Spike-Time scalling factor
          * @param n_x X dimension maximum value
          * @param n_y Y dimension maximum value
-         * @param neural_distance Unit distance betwee neurons
+         * @param neural_distance Unit distance between neurons (neighbor function)
+         * @param distance_unit distance between neurons (spatial distance matrix)
          * @param sigma_1 Initial weight distribution constant #1
-         * @param sigma_2 Initial weight distribution constant #2
+         * @param sigma_2 Initial weight distribution constant #2 ()
          * @param l_bound Lower bound for initial delay vector's values
          * @param u_bound Upper bound for initial delay vector's values
          * @param sigma_neighbor Neighborhood function's sigma parameter (HP)

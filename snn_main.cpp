@@ -2,6 +2,7 @@
 #include <armadillo>
 #include <vector>
 #include <cstdlib>
+#include <fstream>
 #include "ou_snn.h"
 
 /**
@@ -300,10 +301,72 @@ int main(int argc, const char **argv) {
     }
 
 
+    // Testing training algorthm
+    i_layer_size = 2;
+    h_layer_size = 64;
+    tau_m = 2.5;
+    u_rest = 0;
+    init_v = 5;
+    t_reset = 3;
+    k_nought = 1;
+    round_zero = 0.1;
+    alpha = 1.75;
+    // note that n_x * n_y = h_layer_size
+    unsigned int n_x = 8;
+    unsigned int n_y = 8;
+    double neural_distance = 1;
+    distance_unit = neural_distance;
+    sigma_1 = 0.7;
+    sigma_2 = 1.6;
+    l_bound = 1;
+    u_bound = 10;
+    double sigma_neighbor = 1;
+    double tau_alpha = -15.4;
+    double tau_beta = -15.5;
+    double eta_w = 0.15;
+    double eta_d = 0.15;
+    unsigned int t_max = 15;
+    unsigned int t_delta = 3;
+    double ltd_max = -0.1;
+    OU_SRMN_TRAIN model(i_layer_size, h_layer_size, tau_m, u_rest, init_v, 
+    t_reset, k_nought, round_zero, alpha, n_x, n_y, neural_distance,
+    distance_unit, sigma_1, sigma_2, l_bound, u_bound, sigma_neighbor, 
+    tau_alpha, tau_beta, eta_w, eta_d, t_max, t_delta, ltd_max);
+
+    std::vector<std::vector<double>> data = {
+        {0, 0, 0, 1, 2, 2, 3, 3, 3, 3, 3, 2, 1, 0, 0, 0, 0, 0, 0, 0, 0},
+        {0, 1, 2, 2, 2, 3, 3, 4, 5, 6, 7, 7, 7, 7, 6, 5, 4, 3, 2, 1, 0}
+    };
+
+    // save delays into file:
+    std::ofstream myfile;
+    myfile.open("snn_data.txt");
+    
+    for(unsigned int i = 0; i < model.snn->d_ji.size(); i++)
+    {
+        myfile << "[ ";
+        for(unsigned int j = 0; j < model.snn->d_ji.at(i).size(); j++)
+        {
+            myfile << model.snn->d_ji.at(i).at(j) << ", ";
+        }
+        myfile << "]" << std::endl;
+    }
+    model.train(data);
+    myfile << std::endl;
+     for(unsigned int i = 0; i < model.snn->d_ji.size(); i++)
+    {
+        myfile << "[ ";
+        for(unsigned int j = 0; j < model.snn->d_ji.at(i).size(); j++)
+        {
+            myfile << model.snn->d_ji.at(i).at(j) << ", ";
+        }
+        myfile << "]" << std::endl;
+    }
+
 
     // Armadillo version printout
     arma::arma_version ver;
-    printf("Armadillo Version: %s\n", ver.as_string().c_str());
+    printf("\nArmadillo Version: %s\n", ver.as_string().c_str());
     return 0;
 }
 
