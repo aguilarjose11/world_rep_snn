@@ -304,30 +304,30 @@ int main(int argc, const char **argv) {
     // Testing training algorthm
     i_layer_size = 2;
     h_layer_size = 64;
-    tau_m = 2.5;
-    u_rest = 0;
-    init_v = 5;
+    tau_m = 5.5;
+    u_rest = 2;
+    init_v = 25;
     t_reset = 3;
-    k_nought = 1;
-    round_zero = 0.1;
-    alpha = 1.75;
+    k_nought = 2.5;
+    round_zero = 0.05;
+    alpha = 1;
     // note that n_x * n_y = h_layer_size
     unsigned int n_x = 8;
     unsigned int n_y = 8;
-    double neural_distance = 1;
-    distance_unit = neural_distance;
+    double neural_distance = 0.5;
+    distance_unit = 1;
     sigma_1 = 0.7;
     sigma_2 = 1.6;
     l_bound = 1;
-    u_bound = 10;
+    u_bound = 7;
     double sigma_neighbor = 1;
     double tau_alpha = -15.4;
     double tau_beta = -15.5;
     double eta_w = 0.15;
-    double eta_d = 0.15;
-    unsigned int t_max = 15;
+    double eta_d = .5;
+    unsigned int t_max = 25;
     unsigned int t_delta = 3;
-    double ltd_max = -0.1;
+    double ltd_max = -0.45;
     OU_SRMN_TRAIN model(i_layer_size, h_layer_size, tau_m, u_rest, init_v, 
     t_reset, k_nought, round_zero, alpha, n_x, n_y, neural_distance,
     distance_unit, sigma_1, sigma_2, l_bound, u_bound, sigma_neighbor, 
@@ -337,31 +337,62 @@ int main(int argc, const char **argv) {
         {0, 0, 0, 1, 2, 2, 3, 3, 3, 3, 3, 2, 1, 0, 0, 0, 0, 0, 0, 0, 0},
         {0, 1, 2, 2, 2, 3, 3, 4, 5, 6, 7, 7, 7, 7, 6, 5, 4, 3, 2, 1, 0}
     };
+    std::vector<std::vector<double>> data_2 = {
+        {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+        {0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 1, 1, 1, 1},
+    };
 
     // save delays into file:
-    std::ofstream myfile;
-    myfile.open("snn_data.txt");
+    std::ofstream delay_file, weight_file;
+    delay_file.open("snn_data_delays.txt");
+    weight_file.open("snn_data_weights.txt");
     
+    // print out delays
+    delay_file << "Delays before training:" << std::endl;
     for(unsigned int i = 0; i < model.snn->d_ji.size(); i++)
     {
-        myfile << "[ ";
+        delay_file << "[ ";
         for(unsigned int j = 0; j < model.snn->d_ji.at(i).size(); j++)
         {
-            myfile << model.snn->d_ji.at(i).at(j) << ", ";
+            delay_file << model.snn->d_ji.at(i).at(j) << ", ";
         }
-        myfile << "]" << std::endl;
+        delay_file << "]" << std::endl;
     }
-    model.train(data);
-    myfile << std::endl;
+    // print out weights
+    weight_file << "Weights before training:" << std::endl;
+    for(unsigned int m = 0; m < model.snn->h_size; m++)
+    {
+        weight_file << "[ ";
+        for(unsigned int n = 0; n < model.snn->h_size; n++)
+        {
+            weight_file << model.snn->hidden_layer.at(m).w_m.at(n) << ", ";
+        }
+        weight_file << "]" << std::endl;
+    }
+    for(unsigned int p = 0; p < 50; p++)
+        model.train(data);
+    delay_file << std::endl << "Delays after training:"<< std::endl;
      for(unsigned int i = 0; i < model.snn->d_ji.size(); i++)
     {
-        myfile << "[ ";
+        delay_file << "[ ";
         for(unsigned int j = 0; j < model.snn->d_ji.at(i).size(); j++)
         {
-            myfile << model.snn->d_ji.at(i).at(j) << ", ";
+            delay_file << model.snn->d_ji.at(i).at(j) << ", ";
         }
-        myfile << "]" << std::endl;
+        delay_file << "]" << std::endl;
     }
+    delay_file.close();
+    weight_file << "Weights after training:" << std::endl;
+    for(unsigned int m = 0; m < model.snn->h_size; m++)
+    {
+        weight_file << "[ ";
+        for(unsigned int n = 0; n < model.snn->h_size; n++)
+        {
+            weight_file << model.snn->hidden_layer.at(m).w_m.at(n) << ", ";
+        }
+        weight_file << "]" << std::endl;
+    }
+    weight_file.close();
 
 
     // Armadillo version printout

@@ -1087,6 +1087,10 @@ void OU_SRMN_TRAIN::train(std::vector<std::vector<double>> X)
                         if(DEBUG)
                             printf("%f %f\n", delta_w_mn, delta_w_nm);
                     }
+                    else
+                    {
+                        if(DEBUG);
+                    }
                 }
             }
 
