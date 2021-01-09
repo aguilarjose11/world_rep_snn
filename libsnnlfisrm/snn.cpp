@@ -1,16 +1,5 @@
-#include <armadillo>
-#include <vector>
-
-#include "lfi.h"
-#include "base_snn.h"
 #include "snn.h"
 
-
-neuronexception neuronex = neuronexception();
-
-InputLayerException ilex = InputLayerException();
-
-euclideanexception eucex = euclideanexception();
 
 /* Distance Matrix builder */
 
@@ -48,7 +37,7 @@ arma::Mat<double> euclidean_distance_matrix(std::vector<std::vector<double>> *po
     {
         // Problem with the input points
         fprintf(stderr, "Input Point matrix is not well shapped.\n");
-        throw eucex;
+        throw euclideanexception();
     }
     arma::Mat<double> distance_matrix(point_list->at(X_INDEX).size(), point_list->at(0).size());
     double euclidean_dist = 0.0;
@@ -112,7 +101,7 @@ std::vector<arma::Col<double>> initial_delay_vectors(unsigned int n_neurons, uns
     {
         // invalid lower and upper ranges
         fprintf(stderr, "Invalid range for initial delay vector");
-        throw eucex;
+        throw euclideanexception();
     }
     if(DEBUG)
         printf("Passed initial delay vector's checks.\n");

@@ -3,7 +3,9 @@
 
 #include "lfi.h"
 #include "base_snn.h"
+#include "snn_ex.h"
 
+#pragma once
 
 /**
  * Euclidean distance matrix

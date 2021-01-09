@@ -17,24 +17,6 @@
 #define K_LIST_LATERAL_SYNAPSES 1
 #define NO_WINNER_SPIKE (UINT_MAX) - 1
 
-/**
- * Exceptions
-*/
-class neuronexception: public std::exception
-{
-  virtual const char* what() const throw();
-};
-
-class InputLayerException: public std::exception
-{
-  virtual const char* what() const throw();
-};
-
-class euclideanexception: public std::exception
-{
-  virtual const char* what() const throw();
-};
-
 
 /**
  * Neural Spike

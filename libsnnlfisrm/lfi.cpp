@@ -1,26 +1,5 @@
 #include "lfi.h"
-
-
-// Exceptions
-const char* neuronexception::what() const throw()
-{
-  return "Invalid neuron initial values";
-}
-neuronexception neuronex = neuronexception();
-
-
-const char* InputLayerException::what() const throw()
-{
-return "Invalid inputs for input layer";
-}
-InputLayerException ilex = InputLayerException();
-
-
-const char* euclideanexception::what() const throw()
-{
-return "Invalid euclidean inputs";
-}
-euclideanexception eucex = euclideanexception();
+#include "snn_ex.h"
 
 
 /////////////////////////////////////////////////////////////////////
@@ -46,25 +25,25 @@ SpikeResponseModelNeuron::SpikeResponseModelNeuron(unsigned int snn_id, int n_in
     {
         // invalid initial delays
         fprintf(stderr, "invalid initial delays {%d} - {%d}\n", n_inputs, (int)init_d.size());
-        throw neuronex;
+        throw neuronexception();
     }
     if(n_lateral != (int)init_w.size())
     {
         // invalid initial weights
         fprintf(stderr, "invalid initial weights\n");
-        throw neuronex;
+        throw neuronexception();
     }
     if(tau_m <= 0)
     {
         // invalid tau_m
         fprintf(stderr, "invalid tau_m\n");
-        throw neuronex;
+        throw neuronexception();
     }
     if(init_v <= 0)
     {
         // invalid initial threshold
         fprintf(stderr, "invalid initial threshold\n");
-        throw neuronex;
+        throw neuronexception();
     }
     if(t_reset > 200)
     {
@@ -75,13 +54,13 @@ SpikeResponseModelNeuron::SpikeResponseModelNeuron(unsigned int snn_id, int n_in
     {
         // invalid kappa_naugh
         fprintf(stderr, "invalid k_0\n");
-        throw neuronex;
+        throw neuronexception();
     }
     if(round_zero <= 0)
     {
         // invalid round to zero threshold
         fprintf(stderr, "invalid round to zero threshold\n");
-        throw neuronex;
+        throw neuronexception();
     }
     
 
@@ -388,7 +367,7 @@ FirstSpikeTimeNeuron::FirstSpikeTimeNeuron(unsigned int snn_id, double alpha)
     {
         // invalid alpha
         fprintf(stderr, "Invalid alpha value.\n");
-        throw neuronex;
+        throw neuronexception();
     }
 
     // construct neuron

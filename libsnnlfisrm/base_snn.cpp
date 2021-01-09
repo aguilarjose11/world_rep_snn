@@ -1,14 +1,6 @@
-
 #include "base_snn.h"
-#include "lfi.h"
+#include "snn_ex.h"
 
-
-
-neuronexception neuronex = neuronexception();
-
-InputLayerException ilex = InputLayerException();
-
-euclideanexception eucex = euclideanexception();
 
 BaseSNN::BaseSNN(unsigned int i_layer_size, unsigned int h_layer_size, 
         std::vector<arma::Col<double>> d_init, std::vector<arma::Col<double>> w_init, double tau_m,
@@ -20,25 +12,25 @@ BaseSNN::BaseSNN(unsigned int i_layer_size, unsigned int h_layer_size,
     {
         // invalid initial delays
         fprintf(stderr, "invalid initial delays {%u} - {%u}\n", i_layer_size, (unsigned int)d_init.size());
-        throw neuronex;
+        throw neuronexception();
     }
     if(h_layer_size != w_init.size() || h_layer_size != w_init.at(0).size())
     {
         // invalid initial weights
         fprintf(stderr, "invalid initial weights\n");
-        throw neuronex;
+        throw neuronexception();
     }
     if(tau_m <= 0)
     {
         // invalid tau_m
         fprintf(stderr, "invalid tau_m\n");
-        throw neuronex;
+        throw neuronexception();
     }
     if(init_v <= 0)
     {
         // invalid initial threshold
         fprintf(stderr, "invalid initial threshold\n");
-        throw neuronex;
+        throw neuronexception();
     }
     if(t_reset > 200)
     {
@@ -49,25 +41,25 @@ BaseSNN::BaseSNN(unsigned int i_layer_size, unsigned int h_layer_size,
     {
         // invalid kappa_naugh
         fprintf(stderr, "invalid k_0\n");
-        throw neuronex;
+        throw neuronexception();
     }
     if(round_zero <= 0)
     {
         // invalid round to zero threshold
         fprintf(stderr, "invalid round to zero threshold\n");
-        throw neuronex;
+        throw neuronexception();
     }
     if(h_layer_size != n_y*n_x)
     {
         // invalid number of neurons and requested layout
         fprintf(stderr, "invalid number of neurons for requested layout.\n");
-        throw neuronex;
+        throw neuronexception();
     }
     if(neural_distance <= 0)
     {
         // invalid neighboor distance
         fprintf(stderr, "invalid neighboor neuron distance\n");
-        throw neuronex;
+        throw neuronexception();
     }
     if(DEBUG)
         printf("Passed all SRM constructor checks\n");
@@ -112,7 +104,7 @@ BaseSNN::BaseSNN(unsigned int i_layer_size, unsigned int h_layer_size,
         if(y > n_y)
         {
             fprintf(stderr, "Error!\n");
-            throw neuronex;
+            throw neuronexception();
         }
     }
     if(DEBUG)
@@ -143,7 +135,7 @@ void BaseSNN::process(std::vector<double> data)
     {
         // no enough data
         fprintf(stderr, "No enough data passed\n");
-        throw ilex;
+        throw InputLayerException();
 
     }
 

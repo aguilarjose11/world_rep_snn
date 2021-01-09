@@ -9,7 +9,7 @@
 CC = g++
 OUT_FILE_NAME = libsnnlfisrm.a
 
-CFLAGS= -fPIC -O0 -g -Wall -c -fpermissive
+CFLAGS= -fPIC -O0 -g -Wall -c -fpermissive -std=c++11
 
 INC = -I.
 
