@@ -3,7 +3,7 @@
 #include <vector>
 #include <cstdlib>
 #include <fstream>
-#include "ou_snn.h"
+#include "libsnnlfisrm/snn.h"
 
 /**
  * Calculates initial delays
@@ -36,7 +36,7 @@ int main(int argc, const char **argv) {
     double kappa_naugh = 3;
     double round_zero = 0.1;
 
-    OU_LIF_SRM neuron(snn_id, n_inputs, n_lateral, init_d, init_w, tau_m, 
+    SpikeResponseModelNeuron neuron(snn_id, n_inputs, n_lateral, init_d, init_w, tau_m, 
     u_rest, init_v, t_rest, kappa_naugh, round_zero, 0, 0);
 
     printf("delay vector: [");
@@ -49,7 +49,7 @@ int main(int argc, const char **argv) {
     // test t_pulse is working and making kappas...
     std::vector<double> u;
     printf("number of kappas: %d\n", (int)neuron.k_filter_list.at(K_LIST_INPUT_SYNAPSES).size());
-    neuron.dendrite = std::vector<D_Spike>({D_Spike(0, true), D_Spike(0, 0)});
+    neuron.dendrite = std::vector<DelayedSpike>({DelayedSpike(0, true), DelayedSpike(0, 0)});
     printf("membrane potential: %f\n", neuron.membrane_potential());
     u.push_back(neuron.membrane_potential());
     neuron.t_pulse();
@@ -64,7 +64,7 @@ int main(int argc, const char **argv) {
     neuron.t_pulse();
     printf("membrane potential: %f\n", neuron.membrane_potential());
     u.push_back(neuron.membrane_potential());
-    neuron.dendrite = std::vector<D_Spike>({D_Spike(0, false), D_Spike(0, 0)});
+    neuron.dendrite = std::vector<DelayedSpike>({DelayedSpike(0, false), DelayedSpike(0, 0)});
     neuron.t_pulse();
     u.push_back(neuron.membrane_potential());
     printf("membrane potential: %f\n", neuron.membrane_potential());
@@ -78,7 +78,7 @@ int main(int argc, const char **argv) {
     neuron.t_pulse();
     printf("membrane potential: %f\n", neuron.membrane_potential());
     u.push_back(neuron.membrane_potential());
-    neuron.dendrite = std::vector<D_Spike>({D_Spike(0, true), D_Spike(0, 0)});
+    neuron.dendrite = std::vector<DelayedSpike>({DelayedSpike(0, true), DelayedSpike(0, 0)});
     printf("membrane potential: %f\n", neuron.membrane_potential());
     u.push_back(neuron.membrane_potential());
     neuron.t_pulse();
@@ -88,7 +88,7 @@ int main(int argc, const char **argv) {
     printf("membrane potential: %f\n", neuron.membrane_potential());
     u.push_back(neuron.membrane_potential());
     neuron.t_pulse();
-    neuron.horizontal_dendrite = std::vector<D_Spike>({D_Spike(0, true), D_Spike(0, true)});
+    neuron.horizontal_dendrite = std::vector<DelayedSpike>({DelayedSpike(0, true), DelayedSpike(0, true)});
     printf("membrane potential: %f\n", neuron.membrane_potential());
     u.push_back(neuron.membrane_potential());
     neuron.t_pulse();
@@ -120,7 +120,7 @@ int main(int argc, const char **argv) {
     // Testing FSTN
     printf("Testing Fisrt spike time neuron");
     double alpha = 1;
-    OU_FSTN fstn(0, alpha);
+    FirstSpikeTimeNeuron fstn(0, alpha);
     fstn.dendrite = (double)2;
     fstn.t_pulse();
     fstn.dendrite = (double)2;
@@ -197,7 +197,7 @@ int main(int argc, const char **argv) {
     round_zero = 0.1; 
     alpha = 2;
 
-    OU_SRM_NET snn(i_layer_size, h_layer_size, d_init, w_init,
+    BaseSNN snn(i_layer_size, h_layer_size, d_init, w_init,
     tau_m, u_rest, init_v, t_reset, k_nought, round_zero, alpha, 4, 4, 1);
 
     for(int p = 0; p < 20; p++)
@@ -328,7 +328,7 @@ int main(int argc, const char **argv) {
     unsigned int t_max = 25;
     unsigned int t_delta = 3;
     double ltd_max = -0.45;
-    OU_SRMN_TRAIN model(i_layer_size, h_layer_size, tau_m, u_rest, init_v, 
+    SNN model(i_layer_size, h_layer_size, tau_m, u_rest, init_v, 
     t_reset, k_nought, round_zero, alpha, n_x, n_y, neural_distance,
     distance_unit, sigma_1, sigma_2, l_bound, u_bound, sigma_neighbor, 
     tau_alpha, tau_beta, eta_w, eta_d, t_max, t_delta, ltd_max);

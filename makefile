@@ -9,18 +9,20 @@ LIBS=-lm
 _DEPS = ou_snn.h
 DEPS = $(patsubst %,$(IDIR)/%,$(_DEPS))
 
-_OBJ = ou_snn.o snn_main.o
-OBJ = $(patsubst %,$(ODIR)/%,$(_OBJ))
+_LIBSNN = libsnnlfisrm.a
+LIBSNN = $(patsubst %,./libsnnlfisrm/lib/%,$(_LIBSNN))
+
+
 
 all: snn_main
 
-$(ODIR)/%.o: %.c $(DEPS)
+snn_main.o: snn_main.cpp
 	$(CC) -c -o $@ $< $(CFLAGS)
 
-snn_main: $(OBJ)
+snn_main: snn_main.o $(LIBSNN)
 	$(CC) -o $@ $^ $(CFLAGS) $(LIBS)
 
 .PHONY: clean
 
 clean:
-	rm -f $(ODIR)/*.o *~ core $(INCDIR)/*~ 
+	rm -f $(ODIR)/*.o *~ core $(INCDIR)/*~ snn_main 
