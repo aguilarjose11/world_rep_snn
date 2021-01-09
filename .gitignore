@@ -3,6 +3,9 @@
 !*.cpp
 !*.h
 
+# static libraries
+*.a
+
 # binaries
 snn_main
 test
