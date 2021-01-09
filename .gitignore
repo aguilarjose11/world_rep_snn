@@ -12,3 +12,6 @@ test
 .vscode
 obj
 workspace.code-workspace
+
+# Python ignores
+venv
