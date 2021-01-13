@@ -14,7 +14,7 @@ LIBSNN = $(patsubst %,./libsnnlfisrm/lib/%,$(_LIBSNN))
 
 
 
-all: snn_main
+all: snn_main test_snn
 
 snn_main.o: snn_main.cpp
 	$(CC) -c -o $@ $< $(CFLAGS)
@@ -22,7 +22,13 @@ snn_main.o: snn_main.cpp
 snn_main: snn_main.o $(LIBSNN)
 	$(CC) -o $@ $^ $(CFLAGS) $(LIBS)
 
+test_snn.o: test_snn.cpp
+	$(CC) -c -o $@ $< $(CFLAGS)
+
+test_snn: test_snn.o $(LIBSNN)
+	$(CC) -o $@ $^ $(CFLAGS) $(LIBS)
+
 .PHONY: clean
 
 clean:
-	rm -f $(ODIR)/*.o *~ core $(INCDIR)/*~ snn_main 
+	rm -f $(ODIR)/*.o *~ core $(INCDIR)/*~ snn_main test_snn
