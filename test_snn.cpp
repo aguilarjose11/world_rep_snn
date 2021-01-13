@@ -17,7 +17,7 @@ int main(int argc, const char **argv)
     double tau_m = 2;
     double u_rest = 0;
     double init_v = 4; // when testing math, make this large
-    unsigned char t_rest = 1;
+    unsigned char t_rest = 2;
     double kappa_naugh = 3;
     double round_zero = 0.1;
     double u_max = 10;
@@ -30,7 +30,7 @@ int main(int argc, const char **argv)
 
     std::vector<std::vector<bool>> presynaptic_train = {
         {0, 0, 0, 0, 1, 0, 1, 1, 0, 0, 0, 0, 1, 0, 0},
-        {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1}
+        {0, 1, 0, 1, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 1}
     };
 
     single_neuron.horizontal_dendrite.at(0) = DelayedSpike();
@@ -49,7 +49,25 @@ int main(int argc, const char **argv)
         single_neuron.t_pulse();
         
     }
-    exp_res << "]";
+    exp_res << "]" << std::endl;
+
+
+    double alpha = 1;
+    FirstSpikeTimeNeuron fstn = FirstSpikeTimeNeuron(0, alpha);
+    fstn.dendrite = 2;
+    fstn.encode();
+
+    unsigned char total_pulses = 10;
+
+    exp_res << "First Spike Time Neuron spike after " << total_pulses << "pulses." << std::endl << "[";
+    exp_res << fstn.axon.signal << ", ";
+    for(unsigned char pulse= 0; pulse < total_pulses; pulse++)
+    {
+        fstn.t_pulse();
+        exp_res << fstn.axon.signal << ", ";
+    }
+    exp_res << "]" << std::endl;
+
     exp_res.close();
     
 
