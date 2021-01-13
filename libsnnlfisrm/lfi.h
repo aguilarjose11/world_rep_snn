@@ -367,10 +367,32 @@ class FirstSpikeTimeNeuron
         FirstSpikeTimeNeuron(unsigned int snn_id, double alpha);
 
         /**
-         * 
+         * Function that will synchronize the neuron with the
+         * rest of the network. It makes the neuron make any
+         * calculations that need to get done.
         */
         void t_pulse();
 
+        /**
+         * Encoding function
+         * 
+         * This function will encode the given stimulus using
+         * Time-to-First-Spike encoding. Once this function is
+         * called, it will set the neuron as ready to fire and 
+         * everytime the t_pulse function is called, it will
+         * decrease the time left before the spike is sent.
+         * 
+         * Once a spike is finally sent, the neuron inhibits itself
+         * until a new stimulus is given to be encoded.
+         * 
+         * The value to be encoded will be put in the dendrite member
+         * variable. t_pulsing will not touch this variable any more.
+        */
+        void encode();
+
+        /**
+         * Resets the neuron back to its starting state
+        */
         void reset();
 
         unsigned int snn_id;
@@ -393,5 +415,13 @@ class FirstSpikeTimeNeuron
          * output spike
         */
         DelayedSpike axon;
+
+        /**
+         * Undefined time.
+         * 
+         * Used as a flag for when the neuron is inhibited and awaiting
+         * a new stimulus.
+        */
+        const unsigned int UNDEFINED_TIME = (UINT_MAX) - 2;
 };
 

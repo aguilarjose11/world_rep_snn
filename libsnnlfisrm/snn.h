@@ -117,6 +117,8 @@ class SNN
          * This function will take care of the training of a spiking neural net.
          * The algorithm used is spike time-dependan plasticity (STDP).
          * 
+         * The implemented algorithm here is hebbian learning by default.
+         * 
          * @param X Data to be used.
         */
        void train(std::vector<std::vector<double>> X);

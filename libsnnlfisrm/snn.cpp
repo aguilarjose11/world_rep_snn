@@ -176,28 +176,31 @@ SNN::SNN(unsigned int i_layer_size, unsigned int h_layer_size, double tau_m,
 void SNN::train(std::vector<std::vector<double>> X)
 {
     // Create constants
+    // Will contain the indices for the training samples' 
+    // data and labels
     const unsigned int X_DATA = 0;
     const unsigned int Y_DATA = 1;
+    // Undefined time constant as reference for spikes.
     const unsigned int UNDEFINED_TIME = (UINT_MAX) - 2;
-    // sample data
+    // single sample of data. will contain all data samples
+    // at some point after training.
     std::vector<double> sample;
-    // initialize the sample data
+    // initialize the sample data to contain data and samples
     sample.resize(2);
-    // Not really necesary since we do this inside loop
-    sample.at(X_DATA) = X.at(X_DATA).at(0);
-    sample.at(Y_DATA) = X.at(Y_DATA).at(0);
-    // timeout flag
-    bool time_out = true;
-    // Time table per sample. Useful to calculate weights
+    // timeout flag. remains true if no spike happens
+    bool time_out;
+    // Time table per sample. Useful to calculate weights of hidden synapses
     std::vector<unsigned int> time_table;
     // for every training sample...
     for(unsigned int n_sample = 0; n_sample < X.at(X_DATA).size(); n_sample++)
     {
-        // Set time out flag ready
+        // reset time out flag
         time_out = true;
-        // set up the current sample from the X dataset
+
+        // Prepare the sample to be used for training.
         sample.at(X_DATA) = X.at(X_DATA).at(n_sample);
         sample.at(Y_DATA) = X.at(Y_DATA).at(n_sample);
+        
         /**
          * We clear and resize the timetable to contain the times
          * for every single processing neuron.

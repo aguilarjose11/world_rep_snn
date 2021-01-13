@@ -391,9 +391,15 @@ FirstSpikeTimeNeuron::FirstSpikeTimeNeuron(unsigned int snn_id, double alpha)
     this->snn_id = snn_id;
     this->alpha = alpha;
     this->t = 0;
-    this->spike_delay = 0;
+    this->spike_delay = this->UNDEFINED_TIME;
     this->dendrite = 0;
     this->axon = DelayedSpike();
+}
+
+void FirstSpikeTimeNeuron::encode()
+{
+    // encode by finding the delay time before the next spike.
+    this->spike_delay = (unsigned int) abs(this->alpha * this->dendrite);
 }
 
 void FirstSpikeTimeNeuron::t_pulse()
@@ -403,30 +409,21 @@ void FirstSpikeTimeNeuron::t_pulse()
     // update the time delay
     if(DEBUG)
         printf("Delay to be calculated\n");
-    this->spike_delay = (unsigned int) abs(this->alpha * this->dendrite);
-    // check requirements to send action potential
-    if((this->spike_delay == 0) || this->t % this->spike_delay == 0)
+
+    if(this->spike_delay != UNDEFINED_TIME && --(this->spike_delay) <= 0)
     {
-        // Action potential
-        /**
-         * Note: The action potential has a delay time of zero because as
-         * it leaves the cell, the distance between the neuron and the
-         * processing layer's targets neurons can be significantly 
-         * different. A delay is applied to the spike once it enters the 
-         * network space.
-        */
+        // We have a spike due.
         this->axon = DelayedSpike(0, true);
         if(DEBUG)
             printf("Spike sent\n");
+        // Inhibit the neuron until a new stimulus arrives
+        this->spike_delay = UNDEFINED_TIME;
+        return;
     }
-    else
+    else 
     {
-        // No action potential
-        if(DEBUG)
-            printf("No spike\n");
-        this->axon = DelayedSpike();
+        this->axon = DelayedSpike(0, false);
     }
-    
 }
 
 void FirstSpikeTimeNeuron::reset()
