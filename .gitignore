@@ -7,7 +7,7 @@
 *.a
 
 # logfiles
-.log
+*.log
 
 # binaries
 snn_main
