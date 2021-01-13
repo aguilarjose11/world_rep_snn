@@ -12,6 +12,7 @@
 # binaries
 snn_main
 test
+test_snn
 
 # misc
 *.txt

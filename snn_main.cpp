@@ -17,12 +17,6 @@ arma::Col<double> get_initial_weights();
 
 int main(int argc, const char **argv) {
     
-
-
-
-
-
-
     // Test individual LIF/SRM neuron
     int snn_id = 2;
     int n_inputs = 2;
@@ -304,13 +298,13 @@ int main(int argc, const char **argv) {
     // Testing training algorthm
     i_layer_size = 2;
     h_layer_size = 64;
-    tau_m = 5.5;
+    tau_m = 4.5;
     u_rest = 2;
     init_v = 25;
     t_reset = 3;
     k_nought = 2.5;
     round_zero = 0.05;
-    alpha = 1;
+    alpha = 4;
     // note that n_x * n_y = h_layer_size
     unsigned int n_x = 8;
     unsigned int n_y = 8;
@@ -369,7 +363,7 @@ int main(int argc, const char **argv) {
         }
         weight_file << "]" << std::endl;
     }
-    for(unsigned int p = 0; p < 50; p++)
+    for(unsigned int p = 0; p < 10; p++)
         model.train(data);
     delay_file << std::endl << "Delays after training:"<< std::endl;
      for(unsigned int i = 0; i < model.snn->d_ji.size(); i++)
