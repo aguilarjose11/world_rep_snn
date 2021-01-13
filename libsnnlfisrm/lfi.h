@@ -92,11 +92,12 @@ class SpikeResponseModelNeuron
          * @param t_rest length of refractory period
          * @param kappa_naugh max height of spike (membrane's)
          * @param round_zero value at which kappa function is zero.
+         * @param u_max The maximum PSP/Membrane potential (during spike event)
         */
         SpikeResponseModelNeuron(unsigned int snn_id, int n_inputs, int n_lateral, 
         arma::Col<double> init_d, arma::Col<double> init_w, double tau_m, 
         double u_rest, double init_v, unsigned char t_reset,
-        double kappa_naugh, double round_zero, double x, double y);
+        double kappa_naugh, double round_zero, double x, double y, double u_max);
 
         /**
           * Membrane potential function ( u(t) )
@@ -274,6 +275,23 @@ class SpikeResponseModelNeuron
          * have not fired yet
         */
         int t_ref;
+
+        /**
+         * This membrane potential temporal variable will contain the 
+         * current membrane potential at time of discharge. This is 
+         * used because when the neuron fires, it gets rid of any 
+         * kappas that may be in wait. This effectivelly gets rid of
+         * any posibility of seen the membrane potential until refractory
+         * is over. we use a -1 to indicate when this value is not being used.
+        */
+        int tmp_u;
+
+        /**
+         * This is the maximum height of a spike by a neuron. This is reached
+         * when the neuron finally spikes. It reaches this value only for a
+         * time of 1 t.
+        */
+        double u_max;
 
         // Neuron Anatomy
 

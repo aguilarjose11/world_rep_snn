@@ -142,7 +142,7 @@ SNN::SNN(unsigned int i_layer_size, unsigned int h_layer_size, double tau_m,
         double round_zero, double alpha, unsigned int n_x, unsigned int n_y, double neural_distance, 
         double distance_unit, double sigma_1, double sigma_2, double l_bound, double u_bound,
         double sigma_neighbor, double tau_alpha, double tau_beta, double eta_w, double eta_d,
-        unsigned int t_max, unsigned int t_delta, double ltd_max)
+        unsigned int t_max, unsigned int t_delta, double ltd_max, double u_max)
 {
     // No running checks here!
     // Set up network variables
@@ -157,7 +157,7 @@ SNN::SNN(unsigned int i_layer_size, unsigned int h_layer_size, double tau_m,
     // use distance matrix to create initial weight matrix
     std::vector<arma::Col<double>> w_init = initial_weight_euclidean(distance_matrix, sigma_1, sigma_2);
     // initialize the layer.
-    this->snn = new BaseSNN(i_layer_size, h_layer_size, d_init, w_init, tau_m, u_rest, init_v, t_reset, k_nought, round_zero, alpha, n_x, n_y, neural_distance);
+    this->snn = new BaseSNN(i_layer_size, h_layer_size, d_init, w_init, tau_m, u_rest, init_v, t_reset, k_nought, round_zero, alpha, n_x, n_y, neural_distance, u_max);
     if(DEBUG)
         printf("Passed network initializarion.\n");
     // store hyperparameters
@@ -203,7 +203,7 @@ void SNN::train(std::vector<std::vector<double>> X)
          * for every single processing neuron.
          * 
          * This table will help us find the weight change between
-         * every single neuron
+         * every single neuron for the hidden layer.
         */
         time_table.clear();
         time_table.resize(this->snn->h_size, UNDEFINED_TIME);

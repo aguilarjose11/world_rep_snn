@@ -17,13 +17,14 @@ int main(int argc, const char **argv)
     double tau_m = 2;
     double u_rest = 0;
     double init_v = 4; // when testing math, make this large
-    unsigned char t_rest = 2;
+    unsigned char t_rest = 1;
     double kappa_naugh = 3;
     double round_zero = 0.1;
+    double u_max = 10;
 
     SpikeResponseModelNeuron single_neuron = SpikeResponseModelNeuron(
         snn_id, n_inputs, n_lateral, init_d, init_w, tau_m, u_rest,
-        init_v, t_rest, kappa_naugh, round_zero, 0, 0
+        init_v, t_rest, kappa_naugh, round_zero, 0, 0, u_max
     );
     std::cout << "Created individual neuron." << std::endl;
 

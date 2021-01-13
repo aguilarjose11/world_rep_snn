@@ -23,7 +23,8 @@ class BaseSNN
         BaseSNN(unsigned int i_layer_size, unsigned int h_layer_size, 
         std::vector<arma::Col<double>> d_init, std::vector<arma::Col<double>> w_init, double tau_m,
         double u_rest, double init_v, double t_reset, double k_nought,
-        double round_zero, double alpha, unsigned int n_x, unsigned int n_y, double neural_distance);
+        double round_zero, double alpha, unsigned int n_x, unsigned int n_y, double neural_distance,
+        double u_max);
 
         /**
          * Process function
@@ -72,7 +73,6 @@ class BaseSNN
         bool has_winner;
         // winner spike
         unsigned int winner_neuron;
-
         /**
          * Delay vector for the ith processing neuron in hidden layer
          * [input neuron, hidden layer neuron]

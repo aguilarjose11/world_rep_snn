@@ -102,13 +102,14 @@ class SNN
          * @param t_max Maximum time of run for each sample. (hp)
          * @param t_delta time after winner spike considered causatory. (hp)
          * @param ltd_max maximum long term depression applied. (hp)
+         * @param u_max Maximum potential of spike during spiking.
         */
         SNN(unsigned int i_layer_size, unsigned int h_layer_size, double tau_m,
         double u_rest, double init_v, double t_reset, double k_nought,
         double round_zero, double alpha, unsigned int n_x, unsigned int n_y, double neural_distance, 
         double distance_unit, double sigma_1, double sigma_2, double l_bound, double u_bound,
         double sigma_neighbor, double tau_alpha, double tau_beta, double eta_w, double eta_d,
-        unsigned int t_max, unsigned int t_delta, double ltd_max);
+        unsigned int t_max, unsigned int t_delta, double ltd_max, double u_max);
 
         /**
          * Training function

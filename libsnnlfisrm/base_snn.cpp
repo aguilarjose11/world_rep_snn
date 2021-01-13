@@ -5,7 +5,8 @@
 BaseSNN::BaseSNN(unsigned int i_layer_size, unsigned int h_layer_size, 
         std::vector<arma::Col<double>> d_init, std::vector<arma::Col<double>> w_init, double tau_m,
         double u_rest, double init_v, double t_reset, double k_nought,
-        double round_zero, double alpha, unsigned int n_x, unsigned int n_y, double neural_distance)
+        double round_zero, double alpha, unsigned int n_x, unsigned int n_y, double neural_distance,
+        double u_max)
 {
     // run checks
     if(i_layer_size != d_init.size() || h_layer_size != d_init.at(0).size())
@@ -95,7 +96,7 @@ BaseSNN::BaseSNN(unsigned int i_layer_size, unsigned int h_layer_size,
 
         this->hidden_layer.push_back(SpikeResponseModelNeuron(h, i_layer_size, 
         h_layer_size, arma::Col<double>(tmp_d_init), w_init.at(h), tau_m, u_rest, init_v, t_reset,
-        k_nought, round_zero, x, y));
+        k_nought, round_zero, x, y, u_max));
         if(++x >= n_x)
         {
             x = 0;

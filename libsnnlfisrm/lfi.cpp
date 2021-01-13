@@ -18,7 +18,7 @@ DelayedSpike::DelayedSpike(unsigned int delay, bool signal)
 SpikeResponseModelNeuron::SpikeResponseModelNeuron(unsigned int snn_id, int n_inputs, int n_lateral, 
         arma::Col<double> init_d, arma::Col<double> init_w, double tau_m, 
         double u_rest, double init_v, unsigned char t_reset,
-        double kappa_naugh, double round_zero, double x, double y)
+        double kappa_naugh, double round_zero, double x, double y, double u_max)
 {   
     // run checks
     if(n_inputs != (int)init_d.size())
@@ -91,18 +91,28 @@ SpikeResponseModelNeuron::SpikeResponseModelNeuron(unsigned int snn_id, int n_in
     this->horizontal_dendrite.resize(n_lateral);
     this->dendrite.resize(n_inputs);
     this->axon = DelayedSpike();
+    // Temporal membrane potential for when the neuron spikes
+    // and it removes the kappas.
+    this->tmp_u = -1; // -1 = not being used.
+    this->u_max = u_max;
 }
 
 double SpikeResponseModelNeuron::membrane_potential()
 {
 
-    // we can find the membrane potential at current time by gettinh
+    // we can find the membrane potential at current time by getting
     // the already-calculated kappa value from the kappa filters.
 
     // REMEMBER: by the time this neuron recieves a spike from an input
     // synapse, the delay was already applied beforehand. The neuron does
     // not keep track of the time left for the spike to happen. 
     // once it arrives, IT ARRIVES.
+
+    if(this->tmp_u != -1)
+    {
+        // We need to give the refractory membrane potential (aka. max PSP)
+        return tmp_u;
+    }
 
     // Sum of all membrane potentials from input layer at time t
     double k_sigma = 0;
@@ -130,6 +140,11 @@ void SpikeResponseModelNeuron::t_pulse()
         printf("\n\nPulse at time: %u\n", (unsigned int)this->t);
     // march forward
     (this->t)++;
+    // Make sure that we come down from the maximum spike after spike.
+    if(tmp_u != -1)
+    {
+        tmp_u = -1;
+    }
     // count to see if we reach the end of refactory period
     (this->t_ref)++;
     // have we ended refractory period?
@@ -155,7 +170,7 @@ void SpikeResponseModelNeuron::t_pulse()
          * but again, only spikes that arrive after the refactory period
          * is over are "listened" to.
         */
-        // Refactory period
+        // Refactory period still on going
         // create no spike
         this->axon = DelayedSpike();
         // we go back
@@ -253,6 +268,7 @@ void SpikeResponseModelNeuron::solve()
     {
         if(fire_condition(membrane_potential()))
         {
+            // We meet the fire condition. Refractory period will begin shortly
             // we fire!
             this->fired = true;
             this->t_ref = 0;
@@ -262,6 +278,7 @@ void SpikeResponseModelNeuron::solve()
             // we fire the neuron
             DelayedSpike fire_spike(0, 1);
             this->axon = fire_spike;
+            this->tmp_u = this->u_max;
         }
         else
         {
@@ -324,7 +341,7 @@ double min_val, int delay)
     this->min_val = min_val;
     this->k = kappa_nought;
     this->near_zero = false;
-    this->t = -2;
+    this->t = -2; // note the delay of 1 between spike and actual effect on psp
     this->t_pulse();
 }
 

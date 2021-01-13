@@ -29,9 +29,10 @@ int main(int argc, const char **argv) {
     unsigned char t_rest = 2;
     double kappa_naugh = 3;
     double round_zero = 0.1;
+    double u_max = 10;
 
     SpikeResponseModelNeuron neuron(snn_id, n_inputs, n_lateral, init_d, init_w, tau_m, 
-    u_rest, init_v, t_rest, kappa_naugh, round_zero, 0, 0);
+    u_rest, init_v, t_rest, kappa_naugh, round_zero, 0, 0, u_max);
 
     printf("delay vector: [");
     for(unsigned int i = 0; i < neuron.d_j.size(); i++)
