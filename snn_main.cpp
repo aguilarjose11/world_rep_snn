@@ -193,7 +193,7 @@ int main(int argc, const char **argv) {
     alpha = 2;
 
     BaseSNN snn(i_layer_size, h_layer_size, d_init, w_init,
-    tau_m, u_rest, init_v, t_reset, k_nought, round_zero, alpha, 4, 4, 1);
+    tau_m, u_rest, init_v, t_reset, k_nought, round_zero, alpha, 4, 4, 1, u_max);
 
     for(int p = 0; p < 20; p++)
     {
@@ -326,7 +326,7 @@ int main(int argc, const char **argv) {
     SNN model(i_layer_size, h_layer_size, tau_m, u_rest, init_v, 
     t_reset, k_nought, round_zero, alpha, n_x, n_y, neural_distance,
     distance_unit, sigma_1, sigma_2, l_bound, u_bound, sigma_neighbor, 
-    tau_alpha, tau_beta, eta_w, eta_d, t_max, t_delta, ltd_max);
+    tau_alpha, tau_beta, eta_w, eta_d, t_max, t_delta, ltd_max, u_max);
 
     std::vector<std::vector<double>> data = {
         {0, 0, 0, 1, 2, 2, 3, 3, 3, 3, 3, 2, 1, 0, 0, 0, 0, 0, 0, 0, 0},
