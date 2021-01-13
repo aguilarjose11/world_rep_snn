@@ -6,6 +6,9 @@
 # static libraries
 *.a
 
+# logfiles
+.log
+
 # binaries
 snn_main
 test
