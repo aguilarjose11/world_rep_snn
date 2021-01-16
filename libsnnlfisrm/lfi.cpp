@@ -15,22 +15,16 @@ DelayedSpike::DelayedSpike(unsigned int delay, bool signal)
     this->signal = signal;
 }
 /////////////////////////////////////////////////////////////////////
-SpikeResponseModelNeuron::SpikeResponseModelNeuron(unsigned int snn_id, int n_inputs, int n_lateral, 
-        arma::Col<double> init_d, arma::Col<double> init_w, double tau_m, 
+SpikeResponseModelNeuron::SpikeResponseModelNeuron(unsigned int snn_id, int n_inputs,
+        arma::Col<double> init_d, double tau_m, 
         double u_rest, double init_v, unsigned char t_reset,
-        double kappa_naugh, double round_zero, double x, double y, double u_max)
+        double kappa_naugh, double round_zero, double u_max)
 {   
     // run checks
     if(n_inputs != (int)init_d.size())
     {
         // invalid initial delays
         fprintf(stderr, "invalid initial delays {%d} - {%d}\n", n_inputs, (int)init_d.size());
-        throw neuronexception();
-    }
-    if(n_lateral != (int)init_w.size())
-    {
-        // invalid initial weights
-        fprintf(stderr, "invalid initial weights\n");
         throw neuronexception();
     }
     if(tau_m <= 0)
@@ -66,35 +60,30 @@ SpikeResponseModelNeuron::SpikeResponseModelNeuron(unsigned int snn_id, int n_in
 
     this->snn_id = snn_id;
     this->n_inputs = n_inputs;
-    this->n_lateral = n_lateral;
     this->d_j = init_d;
-    this->w_m = init_w;
     this->tau_m = tau_m;
     this->u_rest = u_rest;
     this->v = init_v;
     this->t_reset = t_reset;
     this->kappa_naugh = kappa_naugh;
     this->round_zero = round_zero;
-    this->x = x;
-    this->y = y;
     this->disabled = false;
 
     // construct neuron's particulars
     this->t = 0;
     this->fired = false;
     this->t_ref = -1;
+    this->tmp_u = -1; // -1 = not being used.
+    this->u_max = u_max;
     // fill in with empty k lists
-    // we have input and lateral kappas
-    this->k_filter_list.resize(2);
+    // we have input kappas only!
+    this->k_filter_list.resize(1);
 
     // initialize the endrites and axons.
-    this->horizontal_dendrite.resize(n_lateral);
     this->dendrite.resize(n_inputs);
     this->axon = DelayedSpike();
     // Temporal membrane potential for when the neuron spikes
     // and it removes the kappas.
-    this->tmp_u = -1; // -1 = not being used.
-    this->u_max = u_max;
 }
 
 double SpikeResponseModelNeuron::membrane_potential()
@@ -122,13 +111,6 @@ double SpikeResponseModelNeuron::membrane_potential()
     {
         k_sigma += this->k_filter_list.at(K_LIST_INPUT_SYNAPSES).at(k_i).k;
     }
-
-    // membrane potentials of lateral synapses
-    for(unsigned int k_m = 0; k_m < this->k_filter_list.at(K_LIST_LATERAL_SYNAPSES).size(); k_m++)
-    {
-        k_sigma += this->k_filter_list.at(K_LIST_LATERAL_SYNAPSES).at(k_m).k;
-    }
-    
 
     // the sum of all kappas plus u_rest is the membrane potential.
     return k_sigma + this->u_rest;
@@ -185,74 +167,38 @@ void SpikeResponseModelNeuron::t_pulse()
     {
         if(this->dendrite.at(input).signal)
         {
-            // this is an active spike
-            if(!this->fired)
-            {
-                // Spike arrived. add new kappa.
-                if(DEBUG)
-                    printf("Spike Recieved. Adding kappa.\n");
-                KappaFilter new_spike(this->tau_m, this->kappa_naugh, this->round_zero, 0);
-                this->k_filter_list.at(K_LIST_INPUT_SYNAPSES).push_back(new_spike);
-            }
-            // if neuron is in refactory, ignore any spike. DELAYS ALREADY
-            // APPLIED!
-        }
-    }
 
-    // check for horizontal inputs
-    for(unsigned int lateral = 0; lateral < this->n_lateral; lateral++)
-    {
-        // for every lateral synapse
-        if(this->snn_id == lateral)
-        {
-            // no self-feedback
-            continue;
-        }
-        if(this->horizontal_dendrite.at(lateral).signal)
-        {
-            if(!this->fired)
-            {
-                // lateral spike arrived, apply the weight!
-                double weighted_k = this->kappa_naugh * this->w_m.at(lateral);
-                KappaFilter new_spike(this->tau_m, weighted_k, this->round_zero, 0);
-                this->k_filter_list.at(K_LIST_LATERAL_SYNAPSES).push_back(new_spike);
-            }
+            // Spike arrived. add new kappa.
+            if(DEBUG)
+                printf("Spike Recieved. Adding kappa.\n");
+            KappaFilter new_spike(this->tau_m, this->kappa_naugh, this->round_zero, 0);
+            this->k_filter_list.at(K_LIST_INPUT_SYNAPSES).push_back(new_spike);
         }
     }
 
     // t_pulse all filters forward
     // also remove invalid near zero kappas
-    for(unsigned int input = 0; input < k_filter_list.size(); input++)
+
+    for(unsigned int j = 0; j < k_filter_list.at(K_LIST_INPUT_SYNAPSES).size(); j++)
     {
-        for(unsigned int j = 0; j < k_filter_list.at(input).size(); j++)
+        k_filter_list.at(K_LIST_INPUT_SYNAPSES).at(j).t_pulse();
+        if(k_filter_list.at(K_LIST_INPUT_SYNAPSES).at(j).is_zero())
         {
-            k_filter_list.at(input).at(j).t_pulse();
-            if(k_filter_list.at(input).at(j).is_zero())
-            {
-                // we remove this (jth) kappa. it is basically depleted
-                k_filter_list.at(input).erase(k_filter_list.at(input).begin()+j);
-                j--;
-            }
+            // we remove this (jth) kappa. it is basically depleted
+            k_filter_list.at(K_LIST_INPUT_SYNAPSES).erase(k_filter_list.at(K_LIST_INPUT_SYNAPSES).begin()+j);
+            j--;
         }
     }
 
-    // solve the neuron
-    if(!this->fired)
-    {
-        this->solve();
-    }
+    // Solve the neuron.
+    this->solve();
+
     if(DEBUG)
     {
         printf("input kappas: [");
         for(unsigned int x = 0; x < this->k_filter_list.at(K_LIST_INPUT_SYNAPSES).size(); x++)
         {
             printf(" %f ", this->k_filter_list.at(K_LIST_INPUT_SYNAPSES).at(x).k);
-        }
-        printf(" ]\n");
-        printf("lateral kappas: [");
-        for(unsigned int x = 0; x < this->k_filter_list.at(K_LIST_LATERAL_SYNAPSES).size(); x++)
-        {
-            printf(" %f ", this->k_filter_list.at(K_LIST_LATERAL_SYNAPSES).at(x).k);
         }
         printf(" ]\n");
     }
@@ -274,9 +220,8 @@ void SpikeResponseModelNeuron::solve()
             this->t_ref = 0;
             // we remove all active kappas!
             this->k_filter_list.at(K_LIST_INPUT_SYNAPSES).clear();
-            this->k_filter_list.at(K_LIST_LATERAL_SYNAPSES).clear();
             // we fire the neuron
-            DelayedSpike fire_spike(0, 1);
+            DelayedSpike fire_spike(0, true);
             this->axon = fire_spike;
             this->tmp_u = this->u_max;
         }
@@ -312,7 +257,6 @@ void SpikeResponseModelNeuron::reset()
     // set time back to 0
     this->t = 0;
     // remove all kappas
-    this->k_filter_list.at(K_LIST_LATERAL_SYNAPSES).clear();
     this->k_filter_list.at(K_LIST_INPUT_SYNAPSES).clear();
     // enable neuron
     this->disabled = false;
@@ -320,11 +264,10 @@ void SpikeResponseModelNeuron::reset()
     this->fired = false;
     // reset refractory timer
     this->t_ref = -1;
+    // reset temporal membrane potential
+    this->tmp_u = -1;
     // reset axon to no spikes
     this->axon = DelayedSpike();
-    // clear horizontal dendrites
-    this->horizontal_dendrite.clear();
-    this->horizontal_dendrite.resize(this->n_lateral);
     // clear input dendrites.
     this->dendrite.clear();
     this->dendrite.resize(this->n_inputs);

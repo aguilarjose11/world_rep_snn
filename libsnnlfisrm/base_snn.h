@@ -3,6 +3,8 @@
 
 #include "lfi.h"
 
+#define NO_WINNER (UINT_MAX) - 1
+
 #pragma once
 
 /**
@@ -19,28 +21,23 @@
 class BaseSNN
 {
     public: 
-        /***/
-        BaseSNN(unsigned int i_layer_size, unsigned int h_layer_size, 
-        std::vector<arma::Col<double>> d_init, std::vector<arma::Col<double>> w_init, double tau_m,
+        /**
+         * Constructor.
+        */
+        BaseSNN(unsigned int i_layer_size,
+        std::vector<arma::Col<double>> d_init, double tau_m,
         double u_rest, double init_v, double t_reset, double k_nought,
-        double round_zero, double alpha, unsigned int n_x, unsigned int n_y, double neural_distance,
-        double u_max);
+        double round_zero, double alpha, double u_max);
 
         /**
          * Process function
          * 
-         * Processes the given data vector and moves the network forward
+         * Solves the network with the given current stimulus.
+         * 
+         * @param None
         */
-        void process(std::vector<double> data);
+        void process();
 
-        /**
-         * Spike checker
-         * 
-         * Checks wether there is a winner spike
-         * 
-         * @return NO_WINNER_SPIKE if no spikes, else, winner neuron's index.
-        */
-        unsigned int find_winner_spike();
 
         /**
          * Reset runction
@@ -50,35 +47,42 @@ class BaseSNN
          * 
          * @param None
         */
-       void reset();
+        void reset();
 
-       /**
-         * Reset runction
+        /**
+         * Re-processing function
          * 
-         * This function resets a neural network back to its initial state using new delays and weights.
+         * Will reset all neurons back to starting, reset the time of the network
+         * and store the new given data. 
          * 
-         * @param init_d initial delays
-         * @param init_w initial weight
+         * @param None
         */
-       void reset(arma::Col<double> init_d, arma::Col<double> init_w);
+        void re_process(std::vector<double> data);
 
         // variables
+        
+        // Input layer size
+        unsigned int i_layer_size;
+
+        // Processing layer size
+        unsigned int h_layer_size;
+
+        // Current time
         unsigned long long t;
-        unsigned int i_size;
-        unsigned int h_size;
-        unsigned int n_x;
-        unsigned int n_y;
-        double neural_distance;
-        // is it there a winner spike?
-        bool has_winner;
-        // winner spike
+
+        // Winner neuron. NO_WINNER if none, else will contain the id
         unsigned int winner_neuron;
+
         /**
          * Delay vector for the ith processing neuron in hidden layer
          * [input neuron, hidden layer neuron]
         */
         std::vector<arma::Col<double>> d_ji;
+
+        // Array containing the input neurons
         std::vector<FirstSpikeTimeNeuron> input_layer;
+
+        // Array containing the processing neurons
         std::vector<SpikeResponseModelNeuron> hidden_layer;
 
         /**
@@ -91,11 +95,17 @@ class BaseSNN
          * 
          * The number of spikes in neuron queue can vary.
         */
-        std::vector<std::vector<std::vector<DelayedSpike>>> net_queue_i;
+        std::vector<std::vector<std::vector<DelayedSpike>>> queue_ji;
 
         /**
-         * Lateral synapse network queue.
+         * Stimulus being processed
         */
-        std::vector<DelayedSpike> net_queue_m;
+        std::vector<double> stimuli;
+
+        /**
+         * flag for newness of stimulus
+        */
+        bool is_stimulus_new;
+
     // TODO.
 };

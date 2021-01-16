@@ -5,6 +5,8 @@
 #include "base_snn.h"
 #include "snn_ex.h"
 
+#define UNDEFINED_TIME (UINT_MAX) - 2
+
 #pragma once
 
 /**
@@ -30,15 +32,11 @@ arma::Mat<double> euclidean_distance_matrix(std::vector<std::vector<double>> *po
 /**
  * Random Initial Delay Calculator
  * 
- * Creates a random matrix containing delays for n_neuron input neurons for n_delays postsynaptic neurons.
- * These delays are created to be specifically used as delays between input neurons and hidden/proccessing.
+ * Creates a delay vector that is equaly distanced and rectangular in shape
  * 
- * @param n_neurons number of input neurons in matrix
- * @param n_delays 
- * @param l_bound
- * @param u_bound
 */
-std::vector<arma::Col<double>> initial_delay_vectors(unsigned int n_neurons, unsigned int n_delays, double l_bound, double u_bound);
+std::vector<arma::Col<double>> initial_delay_vector_2d_map(unsigned int n_x, 
+unsigned int n_y, unsigned int delays_per_row, unsigned int delays_per_column);
 
 /**
  * Initial Weight Calculator
@@ -77,8 +75,7 @@ class SNN
          * of any math and calculations required for the constructors of the spiking
          * neural nets.
          * 
-         * @param i_layer_size Number of input neurons
-         * @param h_layer_size Number of neurons in hidden layer
+         * @param n_data Number of input neurons & expected dimensions of stimuli
          * @param tau_m Constant of decay for post-synaptic potential 
          * @param u_rest Constant potential of neuron
          * @param init_v Initial Threshold
@@ -89,27 +86,16 @@ class SNN
          * @param n_x X dimension maximum value
          * @param n_y Y dimension maximum value
          * @param neural_distance Unit distance between neurons (neighbor function)
-         * @param distance_unit distance between neurons (spatial distance matrix)
-         * @param sigma_1 Initial weight distribution constant #1
-         * @param sigma_2 Initial weight distribution constant #2 ()
-         * @param l_bound Lower bound for initial delay vector's values
-         * @param u_bound Upper bound for initial delay vector's values
          * @param sigma_neighbor Neighborhood function's sigma parameter (HP)
-         * @param tau_alpha Weight excitatory change constant (hp)
-         * @param tau_beta weight inhibitory change constant (hp)
-         * @param eta_w Weight learning step constant (hp)
          * @param eta_d delay learning step constant (hp)
          * @param t_max Maximum time of run for each sample. (hp)
-         * @param t_delta time after winner spike considered causatory. (hp)
-         * @param ltd_max maximum long term depression applied. (hp)
          * @param u_max Maximum potential of spike during spiking.
         */
-        SNN(unsigned int i_layer_size, unsigned int h_layer_size, double tau_m,
-        double u_rest, double init_v, double t_reset, double k_nought,
-        double round_zero, double alpha, unsigned int n_x, unsigned int n_y, double neural_distance, 
-        double distance_unit, double sigma_1, double sigma_2, double l_bound, double u_bound,
-        double sigma_neighbor, double tau_alpha, double tau_beta, double eta_w, double eta_d,
-        unsigned int t_max, unsigned int t_delta, double ltd_max, double u_max);
+        SNN(unsigned int n_data, double tau_m, double u_rest, double init_v, 
+        double t_reset, double k_nought, double round_zero, double alpha, 
+        unsigned int n_x, unsigned int n_y, double neural_distance, 
+        double distance_unit, double sigma_neighbor, double eta_d,
+        unsigned int t_max, double u_max);
 
         /**
          * Training function
@@ -130,45 +116,13 @@ class SNN
         */
        double neighbor(SpikeResponseModelNeuron m, SpikeResponseModelNeuron n);
 
-        /**
-         * Delay updater.
-         * 
-         * Using the winner neuron (already found inside network), updates the delays.
-        */
-        void update_delays(std::vector<double> sample);
 
-        /**
-         * Excitatory weight updating function
-         * 
-         * This function takes care of updating the excitatory synapse weights for a network
-         * where at least one neuron fired.
-         * 
-         * @param network copy of SNN with fired neurons deactivated
-         * @param fired_neurons pointer to list to add all fired neurons
-         * @param t_epoch Maximum length of time for a new spike to be considered caused by previously-fired neuron.
-         * @param sample Data to be used.
-         * @param fired_neuron index number of fired neuron
-        */
-        void update_weights(BaseSNN network, std::vector<unsigned int> *fired_neurons, unsigned int t_epoch, std::vector<double> sample, unsigned int fired_neuron);
-
-        /**
-         * Inhibitory weight updating function
-         * 
-         * This function takes care of updating the neurons given in a list to be considered as inhibitory connections.
-         * 
-        */
-        void update_inhibitory_weights(std::vector<unsigned int> *updated_synapses);
 
 
         // Algorithm hyperparameters
         double sigma_neighbor;
-        double tau_alpha;
-        double tau_beta;
-        double eta_w;
         double eta_d;
         unsigned int t_max;
-        unsigned int t_delta;
-        double ltd_max;
 
         // spatial distance matrix
         arma::Mat<double> distance_matrix;

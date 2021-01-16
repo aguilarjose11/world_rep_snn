@@ -15,7 +15,6 @@
 #define ACTION_POTENTIAL (SHRT_MAX) - 1
 #define K_LIST_INPUT_SYNAPSES 0
 #define K_LIST_LATERAL_SYNAPSES 1
-#define NO_WINNER_SPIKE (UINT_MAX) - 1
 
 
 /**
@@ -78,82 +77,6 @@ class DelayedSpike: public Spike
 class SpikeResponseModelNeuron
 {
     public:
-        /**
-         * Constructor for custom neuron.
-         * 
-         * @param snn_id Neuron's id withing a layer
-         * @param n_inputs  number of input synapses
-         * @param n_lateral number of lateral synapses
-         * @param init_d initial delay vector for input synapses (Deprecated)
-         * @param init_w Initial weight vector for lateral synapses
-         * @param tau_m membrane behaviour constant. (spike decay)
-         * @param u_rest Resting potential
-         * @param init_v Initial threshold
-         * @param t_rest length of refractory period
-         * @param kappa_naugh max height of spike (membrane's)
-         * @param round_zero value at which kappa function is zero.
-         * @param u_max The maximum PSP/Membrane potential (during spike event)
-        */
-        SpikeResponseModelNeuron(unsigned int snn_id, int n_inputs, int n_lateral, 
-        arma::Col<double> init_d, arma::Col<double> init_w, double tau_m, 
-        double u_rest, double init_v, unsigned char t_reset,
-        double kappa_naugh, double round_zero, double x, double y, double u_max);
-
-        /**
-          * Membrane potential function ( u(t) )
-          * 
-          * The membrane potential function gives the 
-          * potential levels at current time t. This
-          * function shall be used for the firing 
-          * decision.
-          * @param None
-          * @return The current membrane potential
-          *             
-        **/
-        double membrane_potential();
-
-        /**
-         * Reset runction
-         * 
-         * This function resets a neuron back to its initial state.
-         * 
-         * @param None
-        */
-       void reset();
-
-        /**
-         * March-Forward function
-         * 
-         * Te t_pulse function triggers the solution of the 
-         * integration of the cell. it helps time the spike
-         * firing and processing. It also creates a time
-         * value similar to epoch.
-        */
-        void t_pulse();
-
-        /**
-         * Integration function.
-         * 
-         * This function takes care of performing the 
-         * integration of the inputs, decide wether the
-         * neuron needs to be triggered, and applies 
-         * the weights and delays for the inputs (not really?).
-        */
-        void solve();
-
-        /**
-         * Firing Condition
-         * 
-         * The conditions for the membrane to fire.
-        */
-        bool fire_condition(double u);
-
-        /**
-         * Disable function
-         * 
-         * Used for training. This function disables the activation of the neuron
-        */
-       void disable();
 
         /**
          * Membrane Behaviour Class
@@ -214,6 +137,83 @@ class SpikeResponseModelNeuron
                 bool near_zero;
         };
 
+        /**
+         * Constructor for custom neuron.
+         * 
+         * @param snn_id Neuron's id withing a layer
+         * @param n_inputs  number of input synapses
+         * @param n_lateral number of lateral synapses (unused, default is 0)
+         * @param init_d initial delay vector for input synapses (Deprecated)
+         * @param tau_m membrane behaviour constant. (spike decay)
+         * @param u_rest Resting potential
+         * @param init_v Initial threshold
+         * @param t_rest length of refractory period
+         * @param kappa_naugh max height of spike (membrane's)
+         * @param round_zero value at which kappa function is zero.
+         * @param u_max The maximum PSP/Membrane potential (during spike event)
+        */
+        SpikeResponseModelNeuron(unsigned int snn_id, int n_inputs, 
+        arma::Col<double> init_d, double tau_m, 
+        double u_rest, double init_v, unsigned char t_reset,
+        double kappa_naugh, double round_zero, double u_max);
+
+        /**
+          * Membrane potential function ( u(t) )
+          * 
+          * The membrane potential function gives the 
+          * potential levels at current time t. This
+          * function shall be used for the firing 
+          * decision.
+          * @param None
+          * @return The current membrane potential
+          *             
+        **/
+        double membrane_potential();
+
+        /**
+         * Reset runction
+         * 
+         * This function resets a neuron back to its initial state.
+         * 
+         * @param None
+        */
+       void reset();
+
+        /**
+         * March-Forward function
+         * 
+         * Te t_pulse function triggers the solution of the 
+         * integration of the cell. it helps time the spike
+         * firing and processing. It also creates a time
+         * value similar to epoch.
+        */
+        void t_pulse();
+
+        /**
+         * Integration function.
+         * 
+         * This function takes care of performing the 
+         * integration of the inputs, decide wether the
+         * neuron needs to be triggered, and applies 
+         * the weights and delays for the inputs (not really?).
+        */
+        void solve();
+
+        /**
+         * Firing Condition
+         * 
+         * The conditions for the membrane to fire.
+        */
+        bool fire_condition(double u);
+
+        /**
+         * Disable function
+         * 
+         * Used for training. This function disables the activation of the neuron
+        */
+       void disable();
+
+
 
         // Constructor variables
         /**
@@ -221,7 +221,6 @@ class SpikeResponseModelNeuron
         */
         unsigned int snn_id;
         unsigned int n_inputs;
-        unsigned int n_lateral;
         /**
          * delay vector for input synapses
          * 
@@ -229,14 +228,7 @@ class SpikeResponseModelNeuron
          * by the network framework.
         */
         arma::Col<double> d_j;
-        /**
-         * Weight matrix.
-         * 
-         * Provides the weights for each input spike.
-         * It is indexed as j where it is the input
-         * presyaptic neuron's weight. 
-        */
-        arma::Col<double> w_m;
+
         double tau_m;
         /**
          * Resting potential of the neuron.
@@ -254,10 +246,8 @@ class SpikeResponseModelNeuron
         unsigned char t_reset;
         double kappa_naugh;
         double round_zero;
-        double x;
-        double y;
-        bool disabled;
 
+        bool disabled;
 
         /**
          * Time tracking variable
@@ -304,16 +294,7 @@ class SpikeResponseModelNeuron
         
         std::vector< std::vector<KappaFilter> > k_filter_list;
 
-        /**
-         * Horizontal Input function
-         * 
-         * The inputs comming from the other neurons on the
-         * same layer of neurons is proccessed here. 
-         * 
-         * The synapses have a delay applied to them when
-         * they first come in.
-        */
-        std::vector<DelayedSpike> horizontal_dendrite;
+
 
 
         /**
@@ -370,6 +351,11 @@ class FirstSpikeTimeNeuron
          * Function that will synchronize the neuron with the
          * rest of the network. It makes the neuron make any
          * calculations that need to get done.
+         * 
+         * Make sure to encode before hand. It is important to
+         * have encoded a stimulus so that t_pulse all it does
+         * is calculate and march forward so that it can send
+         * its outward spike.
         */
         void t_pulse();
 
