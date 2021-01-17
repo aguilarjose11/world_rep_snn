@@ -128,7 +128,7 @@ void SpikeResponseModelNeuron::t_pulse()
         tmp_u = -1;
     }
     // count to see if we reach the end of refactory period
-    (this->t_ref)++;
+    (this->t_ref)++;// what?!
     // have we ended refractory period?
     if(this->fired && this->t_ref == this->t_reset)
     {

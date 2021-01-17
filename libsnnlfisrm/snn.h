@@ -85,7 +85,7 @@ class SNN
          * @param alpha First-Spike-Time scalling factor
          * @param n_x X dimension maximum value
          * @param n_y Y dimension maximum value
-         * @param neural_distance Unit distance between neurons (neighbor function)
+         * @param delay_distance Unit distance between neurons (delay function)
          * @param sigma_neighbor Neighborhood function's sigma parameter (HP)
          * @param eta_d delay learning step constant (hp)
          * @param t_max Maximum time of run for each sample. (hp)
@@ -93,7 +93,7 @@ class SNN
         */
         SNN(unsigned int n_data, double tau_m, double u_rest, double init_v, 
         double t_reset, double k_nought, double round_zero, double alpha, 
-        unsigned int n_x, unsigned int n_y, double neural_distance, 
+        unsigned int n_x, unsigned int n_y, double delay_distance, 
         double distance_unit, double sigma_neighbor, double eta_d,
         unsigned int t_max, double u_max);
 

@@ -1,6 +1,8 @@
 #include "base_snn.h"
 #include "snn_ex.h"
 
+#define MAX_HIDDEN_NEURONS 1000
+
 
 BaseSNN::BaseSNN(unsigned int i_layer_size,
         std::vector<arma::Col<double>> d_init, double tau_m,
@@ -9,10 +11,10 @@ BaseSNN::BaseSNN(unsigned int i_layer_size,
 
 {
     // run checks
-    if(i_layer_size != d_init.size() || h_layer_size != d_init.at(0).size())
+    if(i_layer_size != d_init.size() || d_init.at(0).size() > MAX_HIDDEN_NEURONS)
     {
         // invalid initial delays
-        fprintf(stderr, "invalid initial delays {%u} - {%u}\n", i_layer_size, (unsigned int)d_init.size());
+        fprintf(stderr, "invalid initial delays: input layer: {%u} - {%u} Processing layer: {%u} - {%u}\n", i_layer_size, (unsigned int)d_init.size(), (unsigned int) d_init.at(0).size(), MAX_HIDDEN_NEURONS);
         throw neuronexception();
     }
     if(tau_m <= 0)
@@ -48,11 +50,12 @@ BaseSNN::BaseSNN(unsigned int i_layer_size,
         printf("Passed all SRM constructor checks\n");
     
     // initialize variables
-    this->i_layer_size = i_layer_size;
-    this->h_layer_size = h_layer_size;
+    this->i_layer_size = i_layer_size; // this can be inferred from the delay array
+    this->h_layer_size = d_init.at(0).size();
     this->t = 0;
     this->winner_neuron = NO_WINNER; // undefined value.
     this->d_ji = d_init;
+    this->d_ji_reset = d_init;
     this->is_stimulus_new = true;
 
     
@@ -268,6 +271,7 @@ void BaseSNN::reset()
             this->queue_ji.at(j).at(i).clear();
         }
     }
+    //this->d_ji = this->d_ji_reset;
 }
 
 void BaseSNN::re_process(std::vector<double> data)

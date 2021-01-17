@@ -79,6 +79,8 @@ class BaseSNN
         */
         std::vector<arma::Col<double>> d_ji;
 
+        std::vector<arma::Col<double>> d_ji_reset;
+
         // Array containing the input neurons
         std::vector<FirstSpikeTimeNeuron> input_layer;
 

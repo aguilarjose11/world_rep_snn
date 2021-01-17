@@ -11,7 +11,7 @@
 
 #include <armadillo>
 
-#define DEBUG true
+#define DEBUG false
 #define ACTION_POTENTIAL (SHRT_MAX) - 1
 #define K_LIST_INPUT_SYNAPSES 0
 #define K_LIST_LATERAL_SYNAPSES 1

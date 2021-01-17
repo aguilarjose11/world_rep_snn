@@ -97,10 +97,18 @@ std::vector<arma::Col<double>> initial_weight_euclidean(arma::Mat<double> distan
 std::vector<arma::Col<double>> initial_delay_vector_2d_map(unsigned int n_x, 
 unsigned int n_y, unsigned int delays_per_row, unsigned int delays_per_column)
 {
-    double x_step = n_x / delays_per_row;
-    double y_step = n_y / delays_per_column;
+    
+    double x_step = (double)n_x / (double)delays_per_row;
+    double y_step = (double)n_y / (double)delays_per_column;
+    if(DEBUG)
+        printf("%u %u %u %u, %f, %f\n", n_x, n_y, delays_per_row, delays_per_column, x_step, y_step);
+
+    if(DEBUG)
+        printf("creating delay matrix\n");
     // column 0 -> x, 1 -> y
     std::vector<arma::Col<double>> delay_matrix(2, arma::Col<double>(delays_per_row * delays_per_column));
+    if(DEBUG)
+        printf("Initialized delay matrix\n");
     unsigned int curr_delay = 0;
     for(double y = 0; y < n_y; y += y_step)
     {
@@ -108,6 +116,8 @@ unsigned int n_y, unsigned int delays_per_row, unsigned int delays_per_column)
         {
             delay_matrix.at(0).at(curr_delay) = x;
             delay_matrix.at(1).at(curr_delay) = y;
+            if(DEBUG)
+                printf("temporal flag %u\n", curr_delay);
             curr_delay++;
         }
     }
@@ -142,14 +152,18 @@ SNN::SNN(unsigned int n_data, double tau_m, double u_rest, double init_v,
     // Set up Neural Network
 
     // huh, could we change this to decide what kind of distribution we want?
-    std::vector<arma::Col<double>> d_init = initial_delay_vector_2d_map(n_x, n_y, n_x / delay_distance, n_y / delay_distance);
+    if(DEBUG)
+        printf("creating 2d delay map\n");
+    std::vector<arma::Col<double>> d_init = initial_delay_vector_2d_map(n_x, n_y, std::abs(n_x / delay_distance), std::abs(n_y / delay_distance));
     // create distance matrix between nodes. This will be spatial in nature
+    if(DEBUG)
+        printf("creating euclidean point map\n");
     this->point_map = euclidean_point_map(n_x, n_y);
     // Create spatial distance matrix. Not really a lot of information unless combined with delays.
     this->distance_matrix = euclidean_distance_matrix(&(this->point_map), distance_unit);
     // use distance matrix to create initial weight matrix
-    // initialize the layer.
-    this->snn = new BaseSNN((n_y / delay_distance) * (n_x / delay_distance), d_init, tau_m, u_rest, init_v, t_reset, k_nought, round_zero, alpha, u_max);
+    // initialize the layer. (n_y / delay_distance) * (n_x / delay_distance)
+    this->snn = new BaseSNN(2, d_init, tau_m, u_rest, init_v, t_reset, k_nought, round_zero, alpha, u_max);
     if(DEBUG)
         printf("Passed network initializarion.\n");
     // store hyperparameters
@@ -167,7 +181,7 @@ void SNN::train(std::vector<std::vector<double>> X)
     // at some point after training.
     std::vector<double> sample;
     // initialize the sample data to contain data and samples
-    sample.resize(2);
+    sample.resize(2); // this->n_data
     // timeout flag. remains true if no spike happens
     bool time_out;
     // for every training sample...
@@ -210,7 +224,7 @@ void SNN::train(std::vector<std::vector<double>> X)
         // have we timed out?
         if(time_out)
         {
-            // yep. No change in weights ot delays.
+            // yep. No change in delays.
             fprintf(stderr, "WARNING (Timeout): No winner spike exists after %u epochs. Maybe increase t_max or change the other hyperparameters?\n", this->t_max);
             // reset neuron with new delays/weights and input neurons
             this->snn->reset();
@@ -233,7 +247,7 @@ void SNN::train(std::vector<std::vector<double>> X)
                     // I know, i do not use 'this'. It is a comple 
                     double delta_mj = eta_d*neighbor(snn->hidden_layer.at(m), snn->hidden_layer.at(this->snn->winner_neuron))*(sample.at(j) - snn->d_ji.at(j).at(m));
                     this->snn->d_ji.at(j).at(m) += delta_mj;
-                    printf(" %f ", delta_mj);
+                    printf(" %f ", neighbor(snn->hidden_layer.at(m), snn->hidden_layer.at(this->snn->winner_neuron)));
                 }
                 printf("]\n");
                 //std::getchar();
