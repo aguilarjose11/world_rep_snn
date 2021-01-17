@@ -118,7 +118,6 @@ int main(int argc, const char **argv)
         }
         delay_file << "]" << std::endl;
     }
-    // print out weights
    
     for(unsigned int p = 0; p < 1; p++)
         model.train(data);
