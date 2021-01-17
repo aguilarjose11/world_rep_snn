@@ -1,22 +1,9 @@
-C++ 11 Spiking Neural Network API
-=================================
+World Representation with Spiking Neural Networks
+=================================================
 
-Dear fellow AI nerd,
+This repository contains the code used for the paper that it is to come out sometime soon after february 1st.
 
-Hello! My name is Jose Efrain Aguilar Escamilla and 
-this is part of my major robotics project for my 
-Intelligent Robotics class. I will be using
-this API for spiking neural networks (SNN) to create
-a self-organizing network of neurons that can create
-a map.
-
-Most of the *Documentation* for this project is incomplete
-because I am being quite pressured for time. Once i complete
-this project, I will work my best to fine tune and add
-efficency boosts to this project allongside a more complete
-documentation.
-
-See you after finals!!!
+Here, I utilize Spiking Neural Networks that have been modified from several papers on the topic, to build a self-organizing world representation system. This system uses a shallow networks and uses delays to follow a more biological accurate model. This system will build a path where a robot can maneuver through without previous experience and "remember" its placement. 
 
 * __Jose E. Aguilar Escamilla, December 06, 2020. Junior at the University of Oklahoma.__
 

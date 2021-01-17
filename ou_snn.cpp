@@ -583,7 +583,9 @@ OU_SRM_NET::OU_SRM_NET(unsigned int i_layer_size, unsigned int h_layer_size,
     // initialize network of spikes between neurons in hidden layer
     net_queue_m.resize(h_layer_size);
     if(DEBUG)
+    {
         printf("Initialized network\n");
+    }
         this->has_winner = false;
         this->winner_neuron = -1; // undefined value.
 }
