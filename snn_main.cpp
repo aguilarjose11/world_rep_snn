@@ -3,7 +3,7 @@
 #include <vector>
 #include <cstdlib>
 #include <fstream>
-#include "ou_snn.h"
+#include "libsnnlfisrm/snn.h"
 
 /**
  * Calculates initial delays
@@ -17,12 +17,6 @@ arma::Col<double> get_initial_weights();
 
 int main(int argc, const char **argv) {
     
-
-
-
-
-
-
     // Test individual LIF/SRM neuron
     int snn_id = 2;
     int n_inputs = 2;
@@ -35,9 +29,10 @@ int main(int argc, const char **argv) {
     unsigned char t_rest = 2;
     double kappa_naugh = 3;
     double round_zero = 0.1;
+    double u_max = 10;
 
-    OU_LIF_SRM neuron(snn_id, n_inputs, n_lateral, init_d, init_w, tau_m, 
-    u_rest, init_v, t_rest, kappa_naugh, round_zero, 0, 0);
+    SpikeResponseModelNeuron neuron(snn_id, n_inputs, init_d, tau_m, 
+    u_rest, init_v, t_rest, kappa_naugh, round_zero, u_max);
 
     printf("delay vector: [");
     for(unsigned int i = 0; i < neuron.d_j.size(); i++)
@@ -49,7 +44,7 @@ int main(int argc, const char **argv) {
     // test t_pulse is working and making kappas...
     std::vector<double> u;
     printf("number of kappas: %d\n", (int)neuron.k_filter_list.at(K_LIST_INPUT_SYNAPSES).size());
-    neuron.dendrite = std::vector<D_Spike>({D_Spike(0, true), D_Spike(0, 0)});
+    neuron.dendrite = std::vector<DelayedSpike>({DelayedSpike(0, true), DelayedSpike(0, 0)});
     printf("membrane potential: %f\n", neuron.membrane_potential());
     u.push_back(neuron.membrane_potential());
     neuron.t_pulse();
@@ -64,7 +59,7 @@ int main(int argc, const char **argv) {
     neuron.t_pulse();
     printf("membrane potential: %f\n", neuron.membrane_potential());
     u.push_back(neuron.membrane_potential());
-    neuron.dendrite = std::vector<D_Spike>({D_Spike(0, false), D_Spike(0, 0)});
+    neuron.dendrite = std::vector<DelayedSpike>({DelayedSpike(0, false), DelayedSpike(0, 0)});
     neuron.t_pulse();
     u.push_back(neuron.membrane_potential());
     printf("membrane potential: %f\n", neuron.membrane_potential());
@@ -78,7 +73,7 @@ int main(int argc, const char **argv) {
     neuron.t_pulse();
     printf("membrane potential: %f\n", neuron.membrane_potential());
     u.push_back(neuron.membrane_potential());
-    neuron.dendrite = std::vector<D_Spike>({D_Spike(0, true), D_Spike(0, 0)});
+    neuron.dendrite = std::vector<DelayedSpike>({DelayedSpike(0, true), DelayedSpike(0, 0)});
     printf("membrane potential: %f\n", neuron.membrane_potential());
     u.push_back(neuron.membrane_potential());
     neuron.t_pulse();
@@ -88,7 +83,6 @@ int main(int argc, const char **argv) {
     printf("membrane potential: %f\n", neuron.membrane_potential());
     u.push_back(neuron.membrane_potential());
     neuron.t_pulse();
-    neuron.horizontal_dendrite = std::vector<D_Spike>({D_Spike(0, true), D_Spike(0, true)});
     printf("membrane potential: %f\n", neuron.membrane_potential());
     u.push_back(neuron.membrane_potential());
     neuron.t_pulse();
@@ -118,9 +112,9 @@ int main(int argc, const char **argv) {
     printf("]\n");
 
     // Testing FSTN
-    printf("Testing Fisrt spike time neuron");
+    printf("Testing Fisrt spike time neuron\n");
     double alpha = 1;
-    OU_FSTN fstn(0, alpha);
+    FirstSpikeTimeNeuron fstn(0, alpha);
     fstn.dendrite = (double)2;
     fstn.t_pulse();
     fstn.dendrite = (double)2;
@@ -197,12 +191,13 @@ int main(int argc, const char **argv) {
     round_zero = 0.1; 
     alpha = 2;
 
-    OU_SRM_NET snn(i_layer_size, h_layer_size, d_init, w_init,
-    tau_m, u_rest, init_v, t_reset, k_nought, round_zero, alpha, 4, 4, 1);
+    BaseSNN snn(i_layer_size, d_init, tau_m, u_rest, init_v, t_reset, k_nought, 
+    round_zero, alpha, u_max);
 
+    snn.re_process({0, 0});
     for(int p = 0; p < 20; p++)
     {
-        snn.process({0, 0});
+        snn.process();
         for(unsigned int i = 0; i < h_layer_size; i++)
         {
             double u_i = snn.hidden_layer.at(i).membrane_potential();
@@ -222,9 +217,9 @@ int main(int argc, const char **argv) {
     printf("Testing matrices.\n");
     arma::Mat<double> e_mat = euclidean_distance_matrix (&snn, distance_unit);
     printf("Matrix Content\n\n");
-    for(unsigned int i = 0; i < snn.h_size; i++)
+    for(unsigned int i = 0; i < snn.h_layer_size; i++)
     {
-        for(unsigned int j = 0; j < snn.h_size; j++)
+        for(unsigned int j = 0; j < snn.h_layer_size; j++)
         {
             printf("%f\t", e_mat(i, j));
         }
@@ -238,9 +233,9 @@ int main(int argc, const char **argv) {
     std::vector<arma::Col<double>> w_mat = initial_weight_euclidean(e_mat, sigma_1, sigma_2);
     printf("\nPrinting weight matrix's contents:\n\n");
     printf("Weight Matrix Content\n\n");
-    for(unsigned int i = 0; i < snn.h_size; i++)
+    for(unsigned int i = 0; i < snn.h_layer_size; i++)
     {
-        for(unsigned int j = 0; j < snn.h_size; j++)
+        for(unsigned int j = 0; j < snn.h_layer_size; j++)
         {
             printf("%f\t", w_mat.at(i).at(j));
         }
@@ -271,12 +266,14 @@ int main(int argc, const char **argv) {
     // Testing Random delay generator
     printf("\nTesting Random Delay generator\n");
     std::vector<arma::Col<double>> initial_delays;
-    unsigned int n_neurons = 2;
-    unsigned int n_delays = 10;
-    double l_bound = 1;
-    double u_bound = 3;
 
-    initial_delays = initial_delay_vectors(n_neurons, n_delays, l_bound, u_bound);
+    unsigned int n_x = 10;
+    unsigned int n_y = 10;
+    unsigned int delays_per_row = 10;
+    unsigned int delays_per_column = 10;
+
+    initial_delays = initial_delay_vector_2d_map(n_x, n_y, 
+    delays_per_row, delays_per_column);
 
     printf("Delay Matrix Content\n\n");
     for(unsigned int i = 0; i < initial_delays.size(); i++)
@@ -302,36 +299,31 @@ int main(int argc, const char **argv) {
 
 
     // Testing training algorthm
-    i_layer_size = 2;
-    h_layer_size = 64;
-    tau_m = 5.5;
+    unsigned int n_data = 2;
+    tau_m = 1.5;
     u_rest = 2;
-    init_v = 25;
+    init_v = 4.5;
     t_reset = 3;
     k_nought = 2.5;
     round_zero = 0.05;
-    alpha = 1;
+    alpha = 4;
     // note that n_x * n_y = h_layer_size
-    unsigned int n_x = 8;
-    unsigned int n_y = 8;
-    double neural_distance = 0.5;
+    n_x = 10;
+    n_y = 10;
+    double delay_distance = 1;
     distance_unit = 1;
     sigma_1 = 0.7;
     sigma_2 = 1.6;
-    l_bound = 1;
-    u_bound = 7;
+
     double sigma_neighbor = 1;
-    double tau_alpha = -15.4;
-    double tau_beta = -15.5;
-    double eta_w = 0.15;
+
     double eta_d = .5;
     unsigned int t_max = 25;
     unsigned int t_delta = 3;
     double ltd_max = -0.45;
-    OU_SRMN_TRAIN model(i_layer_size, h_layer_size, tau_m, u_rest, init_v, 
-    t_reset, k_nought, round_zero, alpha, n_x, n_y, neural_distance,
-    distance_unit, sigma_1, sigma_2, l_bound, u_bound, sigma_neighbor, 
-    tau_alpha, tau_beta, eta_w, eta_d, t_max, t_delta, ltd_max);
+    SNN model(n_data, tau_m, u_rest, init_v, 
+    t_reset, k_nought, round_zero, alpha, n_x, n_y, delay_distance,
+    distance_unit, sigma_neighbor, eta_d, t_max, u_max);
 
     std::vector<std::vector<double>> data = {
         {0, 0, 0, 1, 2, 2, 3, 3, 3, 3, 3, 2, 1, 0, 0, 0, 0, 0, 0, 0, 0},
@@ -343,9 +335,8 @@ int main(int argc, const char **argv) {
     };
 
     // save delays into file:
-    std::ofstream delay_file, weight_file;
+    std::ofstream delay_file;
     delay_file.open("snn_data_delays.txt");
-    weight_file.open("snn_data_weights.txt");
     
     // print out delays
     delay_file << "Delays before training:" << std::endl;
@@ -359,18 +350,10 @@ int main(int argc, const char **argv) {
         delay_file << "]" << std::endl;
     }
     // print out weights
-    weight_file << "Weights before training:" << std::endl;
-    for(unsigned int m = 0; m < model.snn->h_size; m++)
-    {
-        weight_file << "[ ";
-        for(unsigned int n = 0; n < model.snn->h_size; n++)
-        {
-            weight_file << model.snn->hidden_layer.at(m).w_m.at(n) << ", ";
-        }
-        weight_file << "]" << std::endl;
-    }
-    for(unsigned int p = 0; p < 50; p++)
+   
+    for(unsigned int p = 0; p < 1; p++)
         model.train(data);
+
     delay_file << std::endl << "Delays after training:"<< std::endl;
      for(unsigned int i = 0; i < model.snn->d_ji.size(); i++)
     {
@@ -382,17 +365,7 @@ int main(int argc, const char **argv) {
         delay_file << "]" << std::endl;
     }
     delay_file.close();
-    weight_file << "Weights after training:" << std::endl;
-    for(unsigned int m = 0; m < model.snn->h_size; m++)
-    {
-        weight_file << "[ ";
-        for(unsigned int n = 0; n < model.snn->h_size; n++)
-        {
-            weight_file << model.snn->hidden_layer.at(m).w_m.at(n) << ", ";
-        }
-        weight_file << "]" << std::endl;
-    }
-    weight_file.close();
+    
 
 
     // Armadillo version printout

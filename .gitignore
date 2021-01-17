@@ -3,12 +3,23 @@
 !*.cpp
 !*.h
 
+# static libraries
+*.a
+
+# logfiles
+*.log
+
 # binaries
 snn_main
 test
+test_snn
 
 # misc
 *.txt
 .vscode
 obj
 workspace.code-workspace
+
+# Python ignores
+venv
+*-checkpoint*
