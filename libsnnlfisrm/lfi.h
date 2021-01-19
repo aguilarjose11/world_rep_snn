@@ -153,7 +153,7 @@ class SpikeResponseModelNeuron
          * @param u_max The maximum PSP/Membrane potential (during spike event)
         */
         SpikeResponseModelNeuron(unsigned int snn_id, int n_inputs, 
-        arma::Col<double> init_d, double tau_m, 
+        std::vector<double> init_d, double tau_m, 
         double u_rest, double init_v, unsigned char t_reset,
         double kappa_naugh, double round_zero, double u_max);
 
@@ -227,7 +227,7 @@ class SpikeResponseModelNeuron
          * may disapear in future updates since this is really managed 
          * by the network framework.
         */
-        arma::Col<double> d_j;
+        std::vector<double> d_j;
 
         double tau_m;
         /**

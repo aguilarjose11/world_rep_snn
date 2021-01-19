@@ -21,8 +21,8 @@ int main(int argc, const char **argv) {
     int snn_id = 2;
     int n_inputs = 2;
     int n_lateral = 1;
-    arma::Col<double> init_d({2, 4});
-    arma::Col<double> init_w({4});
+    std::vector<double> init_d({2, 4});
+    std::vector<double> init_w({4});
     double tau_m = 1;
     double u_rest = 3;
     double init_v = 20;
@@ -161,11 +161,11 @@ int main(int argc, const char **argv) {
     // parameters:
     unsigned int i_layer_size = 2;
     unsigned int h_layer_size = 16;
-    std::vector<arma::Col<double>> d_init({
+    std::vector<std::vector<double>> d_init({
         {4, 3, 2, 3, 4, 3, 3, 2, 1, 4, 3, 3, 3, 2, 5, 2}, 
         {1, 4, 2, 4, 6, 2, 1, 3, 5, 3, 3, 3, 3, 2, 5, 2}
     });
-    std::vector<arma::Col<double>> w_init({
+    std::vector<std::vector<double>> w_init({
         {1, 3, 2, -1, 3, 1, -2, 1, -2, 1, 3, 3, 3, 2, 5, 2},
         {3, 4, 2, 3, 4, 12, 1, 1, 2, 1, 3, 3, 3, 2, 5, 2},
         {2, 3, 2, 1, 2, 1, 2, 1, 1, 2, 3, 3, 3, 2, 5, 2},
@@ -265,7 +265,7 @@ int main(int argc, const char **argv) {
 
     // Testing Random delay generator
     printf("\nTesting Random Delay generator\n");
-    std::vector<arma::Col<double>> initial_delays;
+    std::vector<std::vector<double>> initial_delays;
 
     unsigned int n_x = 10;
     unsigned int n_y = 10;

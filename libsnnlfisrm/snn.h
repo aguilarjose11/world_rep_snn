@@ -35,7 +35,7 @@ arma::Mat<double> euclidean_distance_matrix(std::vector<std::vector<double>> *po
  * Creates a delay vector that is equaly distanced and rectangular in shape
  * 
 */
-std::vector<arma::Col<double>> initial_delay_vector_2d_map(unsigned int n_x, 
+std::vector<std::vector<double>> initial_delay_vector_2d_map(unsigned int n_x, 
 unsigned int n_y, unsigned int delays_per_row, unsigned int delays_per_column);
 
 /**
