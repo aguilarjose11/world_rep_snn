@@ -25,7 +25,7 @@ class BaseSNN
          * Constructor.
         */
         BaseSNN(unsigned int i_layer_size,
-        std::vector<arma::Col<double>> d_init, double tau_m,
+        std::vector<std::vector<double>> d_init, double tau_m,
         double u_rest, double init_v, double t_reset, double k_nought,
         double round_zero, double alpha, double u_max);
 
@@ -77,9 +77,9 @@ class BaseSNN
          * Delay vector for the ith processing neuron in hidden layer
          * [input neuron, hidden layer neuron]
         */
-        std::vector<arma::Col<double>> d_ji;
+        std::vector<std::vector<double>> d_ji;
 
-        std::vector<arma::Col<double>> d_ji_reset;
+        std::vector<std::vector<double>> d_ji_reset;
 
         // Array containing the input neurons
         std::vector<FirstSpikeTimeNeuron> input_layer;

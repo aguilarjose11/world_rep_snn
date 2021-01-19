@@ -12,8 +12,8 @@ int main(int argc, const char **argv)
     int snn_id = 2;
     int n_inputs = 2;
     int n_lateral = 1;
-    arma::Col<double> init_d({2, 4});
-    arma::Col<double> init_w({4});
+    std::vector<double> init_d({2, 4});
+    std::vector<double> init_w({4});
     double tau_m = 2;
     double u_rest = 0;
     double init_v = 20; // when testing math, make this large
@@ -70,9 +70,9 @@ int main(int argc, const char **argv)
 
     // Testing training algorthm
     unsigned int n_data = 2;
-    tau_m = 0.4;
+    tau_m = 0.8;
     u_rest = 0;
-    init_v = 5.5;
+    init_v = 5;
     unsigned int t_reset = 3;
     double k_nought = 3;
     round_zero = 0.05;
@@ -83,7 +83,7 @@ int main(int argc, const char **argv)
     double delay_distance = 0.5;
     unsigned int distance_unit = 1;
     double sigma_neighbor = 1;
-    double eta_d = .5;
+    double eta_d = 1.7;
     unsigned int t_max = 25;
     u_max = 10;
 

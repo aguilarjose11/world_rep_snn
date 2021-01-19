@@ -16,7 +16,7 @@ DelayedSpike::DelayedSpike(unsigned int delay, bool signal)
 }
 /////////////////////////////////////////////////////////////////////
 SpikeResponseModelNeuron::SpikeResponseModelNeuron(unsigned int snn_id, int n_inputs,
-        arma::Col<double> init_d, double tau_m, 
+        std::vector<double> init_d, double tau_m, 
         double u_rest, double init_v, unsigned char t_reset,
         double kappa_naugh, double round_zero, double u_max)
 {   
@@ -60,7 +60,9 @@ SpikeResponseModelNeuron::SpikeResponseModelNeuron(unsigned int snn_id, int n_in
 
     this->snn_id = snn_id;
     this->n_inputs = n_inputs;
+
     this->d_j = init_d;
+
     this->tau_m = tau_m;
     this->u_rest = u_rest;
     this->v = init_v;
@@ -128,7 +130,10 @@ void SpikeResponseModelNeuron::t_pulse()
         tmp_u = -1;
     }
     // count to see if we reach the end of refactory period
-    (this->t_ref)++;// what?!
+    if(this->t_ref != -1)
+    {
+        (this->t_ref)++;
+    }
     // have we ended refractory period?
     if(this->fired && this->t_ref == this->t_reset)
     {
@@ -342,7 +347,7 @@ FirstSpikeTimeNeuron::FirstSpikeTimeNeuron(unsigned int snn_id, double alpha)
 void FirstSpikeTimeNeuron::encode()
 {
     // encode by finding the delay time before the next spike.
-    this->spike_delay = (unsigned int) abs(this->alpha * this->dendrite);
+    this->spike_delay = (unsigned int) abs(this->alpha * this->dendrite) + 1;
 }
 
 void FirstSpikeTimeNeuron::t_pulse()
