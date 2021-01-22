@@ -1,4 +1,5 @@
 #include "libsnnlfisrm/snn.h"
+#include <queue>
 
 #define MAP_DIMENSIONS 2
 #define CONST_POTENTIAL 0
@@ -68,6 +69,11 @@ class WorldRep
         */
         std::vector<std::vector<double>> get_map();
 
+        std::vector<int> dijkstra( 
+        std::vector<std::vector<double>> src,  
+        std::vector<std::vector<double>> end);
+        SNN snn;
+
     private:
     
         /**
@@ -82,9 +88,18 @@ class WorldRep
         */
         std::vector<std::vector<double>> prune();
 
+        void printPath(std::vector<int> parent, 
+        std::vector<int> *final_path, int j);
+
+        int minDistance(std::vector<int> dist, bool sptSet[], 
+        unsigned int V);
+
+        double angle_2d(std::vector<double> n_1, std::vector<double> n_2);
+
+        std::vector<std::vector<double>> distance_map(std::vector<double> X, std::vector<double> Y);
+
 
         // variables
         std::vector<std::vector<double>> world_rep;
-        SNN snn;
         double prune_dist;
 };
