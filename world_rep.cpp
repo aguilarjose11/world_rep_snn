@@ -26,6 +26,8 @@ void WorldRep::train(std::vector<std::vector<double>> data)
 {
     snn.train(data);
     world_rep = prune();
+    // Creates connections between nodes. distance_matrix
+    distance_matrix = distance_map(world_rep.at(0), world_rep.at(1));
 }
 
 
@@ -68,51 +70,9 @@ std::vector<std::vector<double>> WorldRep::get_map()
 }
 
 
-std::vector<int> WorldRep::dijkstra(
-    std::vector<std::vector<double>> src, 
-std::vector<std::vector<double>> end)
+std::vector<unsigned int> WorldRep::dijkstra(unsigned int src, unsigned int j)
 {
-    std::vector<std::vector<double>> graph = world_rep;
-
-    unsigned int V = graph.size();
-    unsigned int n_points = graph.at(0).size();
-
-    arma::Mat<double> dist_map_arma = euclidean_distance_matrix(&graph, 1);
-    // to contain the distance map.
-    std::vector<std::vector<double>> dist_map(dist_map_arma.n_rows, std::vector<double>(dist_map_arma.n_cols, 0));
-    // convert arma::Mat<double> to std::vector matrix
-    for (size_t i = 0; i < dist_map_arma.n_rows; ++i) 
-    {
-        for(size_t p = 0; p < dist_map_arma.n_cols; p++)
-        {
-            dist_map.at(i).at(p) = dist_map_arma(i, p);
-        }
-    };
-
-    unsigned int start, goal;
-
-    double min_dist_start = INFINITY, min_dist_goal = INFINITY;
-
-    // Calculate closest points on map for given.
-    start = (UINT32_MAX) - 1;
-    goal = (UINT32_MAX) - 1;
-    for(int i = 0; i < n_points; i++)
-    {
-        double p2p_src = std::sqrt(std::pow((graph.at(0).at(i) - src.at(0).at(0)), 2) + std::pow((graph.at(1).at(i) - src.at(1).at(0)), 2));
-        if(p2p_src < min_dist_start)
-        {
-            min_dist_start = std::sqrt(std::pow((graph.at(0).at(i) - src.at(0).at(0)), 2) + std::pow((graph.at(1).at(i) - src.at(1).at(0)), 2));
-            start = i;
-        }
-        double p2p_goal = std::sqrt(std::pow((graph.at(0).at(i) - end.at(0).at(0)), 2) + std::pow((graph.at(1).at(i) - end.at(1).at(0)), 2));
-        if(p2p_goal < min_dist_goal)
-        {
-            min_dist_goal = std::sqrt(std::pow((graph.at(0).at(i) - end.at(0).at(0)), 2) + std::pow((graph.at(1).at(i) - end.at(1).at(0)), 2));
-            goal = i;
-        }
-    }
-
-    
+    unsigned int V = distance_matrix.size();
 
     // The output array. dist[i] 
     // will hold the shortest 
@@ -124,29 +84,30 @@ std::vector<std::vector<double>> end)
     // i is included / in shortest 
     // path tree or shortest distance  
     // from src to i is finalized 
-    bool sptSet[V]; 
+    std::vector<bool> sptSet;
+    sptSet.resize(V);
   
     // Parent array to store 
     // shortest path tree 
     std::vector<int> parent;
-    parent.resize(V);
+    parent.resize(V); 
   
     // Initialize all distances as  
     // INFINITE and stpSet[] as false 
-    for (unsigned int i = 0; i < V; i++) 
+    for (int i = 0; i < V; i++) 
     { 
         parent.at(0) = -1; 
         dist.at(i) = INT_MAX; 
-        sptSet[i] = false; 
+        sptSet.at(i) = false; 
     } 
   
     // Distance of source vertex  
     // from itself is always 0 
-    dist.at(start) = 0; 
+    dist.at(src) = 0; 
   
     // Find shortest path 
     // for all vertices 
-    for (unsigned int count = 0; count < V - 1; count++) 
+    for (int count = 0; count < V - 1; count++) 
     { 
         // Pick the minimum distance 
         // vertex from the set of 
@@ -171,26 +132,29 @@ std::vector<std::vector<double>> end)
             // src to v through u is smaller 
             // than current value of 
             // dist[v] 
-            if (!sptSet[v] && graph.at(u).at(v) && 
-                dist.at(u) + graph.at(u).at(v) < dist.at(v)) 
+            if (!sptSet.at(v) && distance_matrix.at(u).at(v) && 
+                dist.at(u) + distance_matrix.at(u).at(v) < dist.at(v)) 
             { 
                 parent.at(v) = u; 
-                dist.at(v) = dist.at(u) + graph.at(u).at(v); 
+                dist.at(v) = dist.at(u) + distance_matrix.at(u).at(v); 
             }  
     } 
   
     // print the constructed 
     // distance array 
     // Create vector containing path:
-    std::vector<int> CURRENT_PATH;
+    std::vector<unsigned int> CURRENT_PATH;
+    parent.at(0) = -1;
     CURRENT_PATH.clear();
-    printPath(parent, &CURRENT_PATH, goal);
+    printPath(parent, &CURRENT_PATH, j);
+    CURRENT_PATH.insert(CURRENT_PATH.begin(), src);
+    // The returned vector contains the indices of the neurons.
     return CURRENT_PATH;
 
 }
 
 
-void WorldRep::printPath(std::vector<int> parent, std::vector<int> *final_path, int j) 
+void WorldRep::printPath(std::vector<int> parent, std::vector<unsigned int> *final_path, int j) 
 { 
       
     // Base Case : If j is source 
@@ -202,16 +166,16 @@ void WorldRep::printPath(std::vector<int> parent, std::vector<int> *final_path, 
     final_path->push_back(j); 
 } 
 
-int WorldRep::minDistance(std::vector<int> dist, bool sptSet[], unsigned int V) 
+int WorldRep::minDistance(std::vector<int> dist, std::vector<bool> sptSet, unsigned int V) 
 { 
       
     // Initialize min value 
     int min = INT_MAX, min_index; 
   
     for (int v = 0; v < V; v++) 
-        if (sptSet[v] == false && 
-                   dist[v] <= min) 
-            min = dist[v], min_index = v; 
+        if (sptSet.at(v) == false && 
+                   dist.at(v) <= min) 
+            min = dist.at(v), min_index = v; 
   
     return min_index; 
 }
@@ -278,7 +242,7 @@ std::vector<std::vector<double>> WorldRep::distance_map(std::vector<double> X, s
 
                 std::vector<double> curr_vertex({X.at(i), Y.at(i)});
                 double vertex_angle = angle_2d(curr_vertex, node_vertex);
-                if(lower_bound <= vertex_angle || vertex_angle < upper_bound)
+                if(lower_bound <= vertex_angle && vertex_angle < upper_bound)
                 {
                     double x_1 = curr_vertex.at(0), y_1 = curr_vertex.at(1);
                     double x_2 = node_vertex.at(0), y_2 = node_vertex.at(1);
@@ -304,4 +268,56 @@ std::vector<std::vector<double>> WorldRep::distance_map(std::vector<double> X, s
     }
     return distance_map;
 
+}
+
+
+std::vector<std::vector<double>> WorldRep::get_path(PathAlgorithm algo,
+std::vector<double> src, std::vector<double> goal)
+{
+    // find closest points to given src and goal points
+    unsigned int closest_src = UINT_MAX, closest_goal = UINT_MAX;
+    double src_min = INFINITY, goal_min = INFINITY, src_dist, goal_dist;
+    // find closest nodes to src and goal
+    for(unsigned int node = 0; node < world_rep.at(0).size(); node++)
+    {
+        double x_curr, y_curr, x_src, y_src, x_goal, y_goal;
+
+        x_curr = world_rep.at(0).at(node);
+        y_curr = world_rep.at(1).at(node); 
+
+        src_dist = sqrt(pow(x_curr - src.at(0), 2) + pow(y_curr - src.at(1), 2));
+        goal_dist = sqrt(pow(x_curr - goal.at(0), 2) + pow(y_curr - goal.at(1), 2));
+
+        if(src_dist < src_min)
+        {
+            src_min = src_dist;
+            closest_src = node;
+        }
+        if(goal_dist < goal_min)
+        {
+            goal_min = goal_dist;
+            closest_goal = node;
+        }
+
+    }
+    std::vector<unsigned int> node_path;
+    if(algo == dijkstras)
+    {
+        // Using dijkstra's algorithm
+        node_path = dijkstra(closest_src, closest_goal);
+    }
+    else if(algo == a_stars)
+    {
+        printf("On progress\n");
+    }
+
+    std::vector<std::vector<double>> path_coords = std::vector<std::vector<double>>(2, std::vector<double>());
+
+    for(unsigned int node_i = 0; node_i < node_path.size(); node_i++)
+    {
+        path_coords.at(0).push_back(world_rep.at(0).at(node_path.at(node_i)));
+        path_coords.at(1).push_back(world_rep.at(1).at(node_path.at(node_i)));
+    }
+
+    return path_coords;
 }

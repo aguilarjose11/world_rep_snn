@@ -54,24 +54,29 @@ class WorldRep
         double sigma_neighbor, double eta_d, unsigned int t_max, 
         double u_max, double prune_dist);
 
+        typedef enum PathAlgorithm
+        {
+            dijkstras,
+            a_stars
+        } PathAlgorithm;
+
         /**
          * Train aformentioned SNN and prune.
         */
         void train(std::vector<std::vector<double>> data);
         
         /**
-         * Utilize A* algorithm for finding best path.
+         * Utilize an algorithm for finding best path.
         */
-        std::vector<std::vector<double>> get_path();
+        std::vector<std::vector<double>> get_path(PathAlgorithm algo,
+        std::vector<double> src, std::vector<double> goal);
         
         /**
          * Accesor function for the map representation.
         */
         std::vector<std::vector<double>> get_map();
 
-        std::vector<int> dijkstra( 
-        std::vector<std::vector<double>> src,  
-        std::vector<std::vector<double>> end);
+        std::vector<unsigned int> dijkstra(unsigned int src, unsigned int j);
         SNN snn;
 
     private:
@@ -89,9 +94,9 @@ class WorldRep
         std::vector<std::vector<double>> prune();
 
         void printPath(std::vector<int> parent, 
-        std::vector<int> *final_path, int j);
+        std::vector<unsigned int> *final_path, int j);
 
-        int minDistance(std::vector<int> dist, bool sptSet[], 
+        int minDistance(std::vector<int> dist, std::vector<bool>sptSet, 
         unsigned int V);
 
         double angle_2d(std::vector<double> n_1, std::vector<double> n_2);
@@ -101,5 +106,7 @@ class WorldRep
 
         // variables
         std::vector<std::vector<double>> world_rep;
+
+        std::vector<std::vector<double>> distance_matrix;
         double prune_dist;
 };

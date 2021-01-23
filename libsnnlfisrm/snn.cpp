@@ -264,7 +264,8 @@ void SNN::train(std::vector<std::vector<double>> X)
             for(unsigned int j = 0, d = this->snn->i_layer_size - 1; j < this->snn->i_layer_size; j++, d--)
             {
                 // for every input neuron
-                printf("[ ");
+                if(DEBUG)
+                    printf("[ ");
                 // you can remove d by chaging order of sample as it is passed.
                 for(unsigned int m = 0; m < this->snn->h_layer_size; m++)
                 {
@@ -272,9 +273,11 @@ void SNN::train(std::vector<std::vector<double>> X)
                     // I know, i do not use 'this'. It is a comple 
                     double delta_mj = eta_d*neighbor(snn->hidden_layer.at(m), snn->hidden_layer.at(closest_neuron))*(sample.at(d) - snn->d_ji.at(j).at(m));
                     this->snn->d_ji.at(j).at(m) += delta_mj;
-                    printf(" %f ", neighbor(snn->hidden_layer.at(m), snn->hidden_layer.at(closest_neuron)));
+                    if(DEBUG)
+                        printf(" %f ", neighbor(snn->hidden_layer.at(m), snn->hidden_layer.at(closest_neuron)));
                 }
-                printf("]\n");
+                if(DEBUG)
+                    printf("]\n");
                 //std::getchar();
             }
         }

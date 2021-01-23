@@ -19,13 +19,19 @@ all: snn_main test_snn
 snn_main.o: snn_main.cpp
 	$(CC) -c -o $@ $< $(CFLAGS)
 
-snn_main: snn_main.o $(LIBSNN)
+snn_main: snn_main.o $(LIBSNN) world_rep.o
 	$(CC) -o $@ $^ $(CFLAGS) $(LIBS)
 
 test_snn.o: test_snn.cpp
 	$(CC) -c -o $@ $< $(CFLAGS)
 
-test_snn: test_snn.o $(LIBSNN)
+test_snn: test_snn.o $(LIBSNN) world_rep.o
+	$(CC) -o $@ $^ $(CFLAGS) $(LIBS)
+
+world_rep.o: world_rep.cpp
+	$(CC) -c -o $@ $< $(CFLAGS)
+
+world_rep: world_rep.o
 	$(CC) -o $@ $^ $(CFLAGS) $(LIBS)
 
 .PHONY: clean
