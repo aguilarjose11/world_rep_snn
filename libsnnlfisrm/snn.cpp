@@ -16,7 +16,7 @@ arma::Mat<double> euclidean_distance_matrix(BaseSNN *snn_net, double distance_un
         for(unsigned int neuron_n = 0; neuron_n < snn_net->h_layer_size; neuron_n++)
         {
             x_1 = snn_net->hidden_layer.at(neuron_m).d_j.at(0);
-            y_1 = snn_net->hidden_layer.at(neuron_m).d_j.at(1);
+            y_1 = snn_net->hidden_layer.at(neuron_m).d_j.at(1); 
             x_2 = snn_net->hidden_layer.at(neuron_n).d_j.at(0);
             y_2 = snn_net->hidden_layer.at(neuron_n).d_j.at(1);
             euclidean_dist = distance_unit * sqrt(pow(x_2 - x_1, 2) + pow(y_2 - y_1, 2));
@@ -94,7 +94,7 @@ std::vector<arma::Col<double>> initial_weight_euclidean(arma::Mat<double> distan
     return weight_struct;
 }
 
-std::vector<arma::Col<double>> initial_delay_vector_2d_map(unsigned int n_x, 
+std::vector<std::vector<double>> initial_delay_vector_2d_map(unsigned int n_x, 
 unsigned int n_y, unsigned int delays_per_row, unsigned int delays_per_column)
 {
     
@@ -106,7 +106,10 @@ unsigned int n_y, unsigned int delays_per_row, unsigned int delays_per_column)
     if(DEBUG)
         printf("creating delay matrix\n");
     // column 0 -> x, 1 -> y
-    std::vector<arma::Col<double>> delay_matrix(2, arma::Col<double>(delays_per_row * delays_per_column));
+    std::vector<std::vector<double>> delay_matrix;
+    delay_matrix.resize(2);
+    delay_matrix.at(0).resize(delays_per_row * delays_per_column);
+    delay_matrix.at(1).resize(delays_per_row * delays_per_column);
     if(DEBUG)
         printf("Initialized delay matrix\n");
     unsigned int curr_delay = 0;
@@ -154,7 +157,7 @@ SNN::SNN(unsigned int n_data, double tau_m, double u_rest, double init_v,
     // huh, could we change this to decide what kind of distribution we want?
     if(DEBUG)
         printf("creating 2d delay map\n");
-    std::vector<arma::Col<double>> d_init = initial_delay_vector_2d_map(n_x, n_y, std::abs(n_x / delay_distance), std::abs(n_y / delay_distance));
+    std::vector<std::vector<double>> d_init = initial_delay_vector_2d_map(n_x, n_y, std::abs(n_x / delay_distance), std::abs(n_y / delay_distance));
     // create distance matrix between nodes. This will be spatial in nature
     if(DEBUG)
         printf("creating euclidean point map\n");
@@ -184,6 +187,7 @@ void SNN::train(std::vector<std::vector<double>> X)
     sample.resize(2); // this->n_data
     // timeout flag. remains true if no spike happens
     bool time_out;
+
     // for every training sample...
     for(unsigned int n_sample = 0; n_sample < X.at(0).size(); n_sample++)
     {
@@ -199,6 +203,11 @@ void SNN::train(std::vector<std::vector<double>> X)
         // We will run the same data up to t_max times
         // if no spike is generated, we say that we timed out
         this->snn->re_process(sample);
+        // variable used to find minimum distance between
+        // input stimulus and the delay vector of jth neuron
+        double delay_stimulus_dist = INFINITY;
+        // will contain the largest neuron's ID
+        unsigned int closest_neuron = UINT32_MAX - 1;
         for(unsigned int t_t = 0; t_t < this->t_max; t_t++)
         {
             // process the current point until we have a spike
@@ -208,12 +217,27 @@ void SNN::train(std::vector<std::vector<double>> X)
             // look for any neurons that may have spiked
             if(this->snn->winner_neuron != NO_WINNER)
             {
+                unsigned int winner_id = this->snn->winner_neuron;
                 /**
                  * We add the time of spike to time table.
                  * We only keep the earliest time of spike
                  * on the time table. It is totally possible for
                  * the spike to spike a second time but not kept
                 */
+                // We need to compare it to any other neurons that may spike
+                // since we need the closest neuron to the input values.
+                double x_1 = this->snn->d_ji.at(1).at(winner_id);
+                double y_1 = this->snn->d_ji.at(0).at(winner_id); 
+                double x_2 = this->snn->stimuli.at(0);
+                double y_2 = this->snn->stimuli.at(1);
+                double euclidean_dist = sqrt(pow(x_2 - x_1, 2) + pow(y_2 - y_1, 2));
+
+                // is this spiking neuron closer to the input stimulus?
+                if(euclidean_dist < delay_stimulus_dist)
+                {
+                    delay_stimulus_dist = euclidean_dist;
+                    closest_neuron = winner_id;
+                }
                 if(time_out)
                 {
                     // we set the time out flag to false. We found at least one spike
@@ -237,19 +261,23 @@ void SNN::train(std::vector<std::vector<double>> X)
             */
 
             // there is a winner neuron. Update delays
-            for(unsigned int j = 0; j < this->snn->i_layer_size; j++)
+            for(unsigned int j = 0, d = this->snn->i_layer_size - 1; j < this->snn->i_layer_size; j++, d--)
             {
                 // for every input neuron
-                printf("[ ");
+                if(DEBUG)
+                    printf("[ ");
+                // you can remove d by chaging order of sample as it is passed.
                 for(unsigned int m = 0; m < this->snn->h_layer_size; m++)
                 {
                     // for every processing neuron
                     // I know, i do not use 'this'. It is a comple 
-                    double delta_mj = eta_d*neighbor(snn->hidden_layer.at(m), snn->hidden_layer.at(this->snn->winner_neuron))*(sample.at(j) - snn->d_ji.at(j).at(m));
+                    double delta_mj = eta_d*neighbor(snn->hidden_layer.at(m), snn->hidden_layer.at(closest_neuron))*(sample.at(d) - snn->d_ji.at(j).at(m));
                     this->snn->d_ji.at(j).at(m) += delta_mj;
-                    printf(" %f ", neighbor(snn->hidden_layer.at(m), snn->hidden_layer.at(this->snn->winner_neuron)));
+                    if(DEBUG)
+                        printf(" %f ", neighbor(snn->hidden_layer.at(m), snn->hidden_layer.at(closest_neuron)));
                 }
-                printf("]\n");
+                if(DEBUG)
+                    printf("]\n");
                 //std::getchar();
             }
         }
@@ -266,7 +294,7 @@ double SNN::neighbor(SpikeResponseModelNeuron m, SpikeResponseModelNeuron n)
 {
     // return general neighbor function
     // euclidean distance using the delays as locations.
-    double z_mn2 = std::pow(m.d_j.at(0) - n.d_j.at(0), 2) + std::pow(m.d_j.at(1) - n.d_j.at(1), 2);
+    double z_mn2 = std::pow(this->snn->d_ji.at(0).at(m.snn_id) - this->snn->d_ji.at(0).at(n.snn_id), 2) + std::pow(this->snn->d_ji.at(1).at(m.snn_id) - this->snn->d_ji.at(1).at(n.snn_id), 2);
     if(DEBUG)
         printf("e^(-%f^2/2*%f^2): %f\n", z_mn2, std::pow(this->sigma_neighbor, 2), std::exp( (-z_mn2) / (2 * std::pow(this->sigma_neighbor, 2)) ));
     return std::exp( (-z_mn2) / (2 * std::pow(this->sigma_neighbor, 2)) );

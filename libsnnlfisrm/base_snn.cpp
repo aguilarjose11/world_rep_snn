@@ -1,11 +1,11 @@
 #include "base_snn.h"
 #include "snn_ex.h"
 
-#define MAX_HIDDEN_NEURONS 1000
+#define MAX_HIDDEN_NEURONS 10000
 
 
 BaseSNN::BaseSNN(unsigned int i_layer_size,
-        std::vector<arma::Col<double>> d_init, double tau_m,
+        std::vector<std::vector<double>> d_init, double tau_m,
         double u_rest, double init_v, double t_reset, double k_nought,
         double round_zero, double alpha, double u_max)
 
@@ -79,7 +79,7 @@ BaseSNN::BaseSNN(unsigned int i_layer_size,
         }
         /** Please edit after changing LFI model. **/
         this->hidden_layer.push_back(SpikeResponseModelNeuron(h, i_layer_size, 
-        arma::Col<double>(tmp_d_init), tau_m, u_rest, init_v, t_reset,
+        tmp_d_init, tau_m, u_rest, init_v, t_reset,
         k_nought, round_zero, u_max));// 0, 0, arma::dvec() values are useless.
     }
     if(DEBUG)
@@ -161,8 +161,14 @@ void BaseSNN::process()
      * - Send the active or innactive spikes to the corresponding hidden
      *   layer's neuron's dendrites.
     */
+    // variable used to find minimum distance between
+    // input stimulus and the delay vector of jth neuron
+    double delay_stimulus_dist = INFINITY;
+    // will contain the largest neuron's ID
+    unsigned int closest_neuron = UINT32_MAX - 1;
     for(unsigned int i = 0; i < h_layer_size; i++)
     {
+        // advance the input queue to connect to processing neuron's dendrites
         for(unsigned int j = 0; j < i_layer_size; j++)
         {
             // is the queue empty? No spikes?
@@ -185,6 +191,7 @@ void BaseSNN::process()
                 bool arrival_train_flag = false;
                 for(unsigned int spike = 0; spike < queue_ji.at(j).at(i).size(); spike++)
                 {
+
                     if(DEBUG)
                         printf("Moving time in synapse {%u} to {%u} spike number %u\n", j, i, spike);
                     // Note: It is biologically impossible for two spikes in the same synapse
@@ -227,11 +234,28 @@ void BaseSNN::process()
         // Pulse the ith neuron in the processing layer
         this->hidden_layer.at(i).t_pulse();
 
-        // Was the neuron the first to spike (aka. won)?
-        if(this->winner_neuron == NO_WINNER && this->hidden_layer.at(i).axon.signal)
+        // Did the neuron spike?
+        if(this->hidden_layer.at(i).axon.signal)
         {
-            this->winner_neuron = this->hidden_layer.at(i).snn_id;
+            // We need to compare it to any other neurons that may spike
+            // since we need the closest neuron to the input values.
+            double x_1 = this->d_ji.at(1).at(i);
+            double y_1 = this->d_ji.at(0).at(i); 
+            double x_2 = this->stimuli.at(0);
+            double y_2 = this->stimuli.at(1);
+            double euclidean_dist = sqrt(pow(x_2 - x_1, 2) + pow(y_2 - y_1, 2));
+
+            // is this spiking neuron closer to the input stimulus?
+            if(euclidean_dist < delay_stimulus_dist)
+            {
+                delay_stimulus_dist = euclidean_dist;
+                closest_neuron = this->hidden_layer.at(i).snn_id;
+            }
         }
+    }
+    if(delay_stimulus_dist != INFINITY)
+    {
+        this->winner_neuron = closest_neuron;
     }
     if(DEBUG)
         printf("Advanced the network's time\n");

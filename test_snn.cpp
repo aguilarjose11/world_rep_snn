@@ -4,7 +4,8 @@
 #include <cstdlib>
 #include <fstream>
 
-#include "libsnnlfisrm/snn.h"
+#include "world_rep.h"
+
 
 int main(int argc, const char **argv)
 {
@@ -12,8 +13,8 @@ int main(int argc, const char **argv)
     int snn_id = 2;
     int n_inputs = 2;
     int n_lateral = 1;
-    arma::Col<double> init_d({2, 4});
-    arma::Col<double> init_w({4});
+    std::vector<double> init_d({2, 4});
+    std::vector<double> init_w({4});
     double tau_m = 2;
     double u_rest = 0;
     double init_v = 20; // when testing math, make this large
@@ -70,9 +71,9 @@ int main(int argc, const char **argv)
 
     // Testing training algorthm
     unsigned int n_data = 2;
-    tau_m = 0.4;
+    tau_m = 0.8;
     u_rest = 0;
-    init_v = 5.5;
+    init_v = 5;
     unsigned int t_reset = 3;
     double k_nought = 3;
     round_zero = 0.05;
@@ -80,10 +81,10 @@ int main(int argc, const char **argv)
     // note that n_x * n_y = h_layer_size
     unsigned int n_x = 8;
     unsigned int n_y = 8;
-    double delay_distance = 0.5;
+    double delay_distance = 0.2;
     unsigned int distance_unit = 1;
     double sigma_neighbor = 1;
-    double eta_d = .5;
+    double eta_d = 1.7;
     unsigned int t_max = 25;
     u_max = 10;
 
@@ -154,7 +155,58 @@ int main(int argc, const char **argv)
         }
     }
 
-    delay_file.close();
-    
+    printf("test world representation and planner.\n");
 
+
+    sigma_neighbor = 0.3;
+
+    std::ofstream planner_file;
+    planner_file.open("world_representation.txt");
+
+    double prune_dist = 0.1;
+
+    WorldRep planner = WorldRep(k_nought, tau_m, init_v, round_zero,
+    n_x, n_y, delay_distance, sigma_neighbor, eta_d, t_max, u_max, 
+    prune_dist);
+
+    planner.train(data);
+
+    planner_file << std::endl << "Delays after training:"<< std::endl;
+    for(unsigned int i = 0; i < planner.snn.snn->d_ji.size(); i++)
+    {
+        planner_file << "[ ";
+        for(unsigned int j = 0; j < planner.snn.snn->d_ji.at(i).size(); j++)
+        {
+            planner_file << planner.snn.snn->d_ji.at(i).at(j) << ", ";
+        }
+        planner_file << "]" << std::endl;
+    }
+
+
+    std::vector<std::vector<double>> world_rep = planner.get_map();
+    
+    planner_file << std::endl << "Delays after training with sigma_neighbor = " << sigma_neighbor << " and prunning with value:" << prune_dist << std::endl;
+
+    for(unsigned int i = 0; i < world_rep.size(); i++)
+    {
+        planner_file << "[ ";
+        for(unsigned int j = 0; j < world_rep.at(i).size(); j++)
+        {
+            planner_file << world_rep.at(i).at(j) << ", ";
+        }
+        planner_file << "]" << std::endl;
+    }
+
+    planner.dijkstra(28, 409);
+    std::vector<double> src_coor, goal_coor;
+    src_coor = std::vector<double>({0, 0});
+    goal_coor = std::vector<double>({0, 7});
+    std::vector<std::vector<double>> path = planner.get_path(WorldRep::PathAlgorithm::dijkstras, src_coor, goal_coor);
+    printf("[");
+    for(unsigned int x = 0; x < path.at(0).size(); x++)
+    {
+        printf("[%f, %f], ", path.at(0).at(x), path.at(1).at(x));
+    }
+    printf("]\n");
+    planner_file.close();
 }

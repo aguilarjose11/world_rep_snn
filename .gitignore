@@ -23,3 +23,9 @@ workspace.code-workspace
 # Python ignores
 venv
 *-checkpoint*
+
+# Compilation folders
+obj
+lib
+source
+
