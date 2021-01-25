@@ -94,7 +94,7 @@ std::vector<unsigned int> WorldRep::dijkstra(unsigned int src, unsigned int j)
   
     // Initialize all distances as  
     // INFINITE and stpSet[] as false 
-    for (int i = 0; i < V; i++) 
+    for (unsigned int i = 0; i < V; i++) 
     { 
         parent.at(0) = -1; 
         dist.at(i) = INT_MAX; 
@@ -107,7 +107,7 @@ std::vector<unsigned int> WorldRep::dijkstra(unsigned int src, unsigned int j)
   
     // Find shortest path 
     // for all vertices 
-    for (int count = 0; count < V - 1; count++) 
+    for (unsigned int count = 0; count < V - 1; count++) 
     { 
         // Pick the minimum distance 
         // vertex from the set of 
@@ -123,7 +123,7 @@ std::vector<unsigned int> WorldRep::dijkstra(unsigned int src, unsigned int j)
         // Update dist value of the  
         // adjacent vertices of the 
         // picked vertex. 
-        for (int v = 0; v < V; v++) 
+        for (unsigned int v = 0; v < V; v++) 
   
             // Update dist[v] only if is 
             // not in sptSet, there is 
@@ -172,7 +172,7 @@ int WorldRep::minDistance(std::vector<int> dist, std::vector<bool> sptSet, unsig
     // Initialize min value 
     int min = INT_MAX, min_index; 
   
-    for (int v = 0; v < V; v++) 
+    for (unsigned int v = 0; v < V; v++) 
         if (sptSet.at(v) == false && 
                    dist.at(v) <= min) 
             min = dist.at(v), min_index = v; 
@@ -204,7 +204,7 @@ std::vector<std::vector<double>> WorldRep::distance_map(std::vector<double> X, s
     double angle = 90, max_dist = 2;
     unsigned int angle_n = (unsigned int)(360 / angle + 1);
     std::vector<unsigned int> angle_list;
-    for(int a = 0; a < angle_n; a++)
+    for(unsigned int a = 0; a < angle_n; a++)
     {
         angle_list.push_back(angle*a);
     }
@@ -213,7 +213,7 @@ std::vector<std::vector<double>> WorldRep::distance_map(std::vector<double> X, s
         angle_list.push_back(360);
     }
 
-    int node;
+    unsigned int node;
     std::vector<std::vector<double>> distance_map(X.size(), std::vector<double>(Y.size(), 0.0));
     std::vector<double> node_vertex, vertex;
     std::deque<int> visited, processing;
@@ -280,7 +280,7 @@ std::vector<double> src, std::vector<double> goal)
     // find closest nodes to src and goal
     for(unsigned int node = 0; node < world_rep.at(0).size(); node++)
     {
-        double x_curr, y_curr, x_src, y_src, x_goal, y_goal;
+        double x_curr, y_curr;
 
         x_curr = world_rep.at(0).at(node);
         y_curr = world_rep.at(1).at(node); 
