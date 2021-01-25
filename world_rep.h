@@ -57,7 +57,7 @@ class WorldRep
         typedef enum PathAlgorithm
         {
             dijkstras,
-            a_stars
+            a_stars // Not implemented yet
         } PathAlgorithm;
 
         /**
