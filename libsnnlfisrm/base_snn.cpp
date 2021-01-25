@@ -1,7 +1,7 @@
 #include "base_snn.h"
 #include "snn_ex.h"
 
-#define MAX_HIDDEN_NEURONS 1000
+#define MAX_HIDDEN_NEURONS 10000
 
 
 BaseSNN::BaseSNN(unsigned int i_layer_size,
